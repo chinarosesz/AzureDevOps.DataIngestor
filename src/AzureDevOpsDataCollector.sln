@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureDevOpsDataCollector.Console", "AzureDevOpsDataCollector.Console\AzureDevOpsDataCollector.Console.csproj", "{F7DFF1D2-4DF5-48C6-A996-6A6E47FED279}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AzureDevOpsDataCollector.Core", "AzureDevOpsDataCollector.Core\AzureDevOpsDataCollector.Core.csproj", "{F1D579FC-D11D-4244-971E-58218894BEBD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F7DFF1D2-4DF5-48C6-A996-6A6E47FED279}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7DFF1D2-4DF5-48C6-A996-6A6E47FED279}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7DFF1D2-4DF5-48C6-A996-6A6E47FED279}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7DFF1D2-4DF5-48C6-A996-6A6E47FED279}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1D579FC-D11D-4244-971E-58218894BEBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1D579FC-D11D-4244-971E-58218894BEBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1D579FC-D11D-4244-971E-58218894BEBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1D579FC-D11D-4244-971E-58218894BEBD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A1D86CA8-5A1D-4332-8B86-C88051A31F5E}
+	EndGlobalSection
+EndGlobal
