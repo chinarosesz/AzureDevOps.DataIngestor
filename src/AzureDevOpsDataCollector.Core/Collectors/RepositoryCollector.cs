@@ -23,11 +23,11 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             {
                 this.DisplayProjectHeader(project);
                 List<GitRepository> repos = await gitHttpClient.GetRepositoriesWithRetryAsync(project);
-                await this.InsertOrUpdateRepositoriesAsync(repos);
+                await this.InsertOrUpdateRepositories(repos);
             }
         }
 
-        private async Task InsertOrUpdateRepositoriesAsync(List<GitRepository> repositories)
+        private async Task InsertOrUpdateRepositories(List<GitRepository> repositories)
         {
             List<RepositoryEntity> repoEntities = new List<RepositoryEntity>();
 
@@ -48,7 +48,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 repoEntities.Add(repoEntity);
             }
 
-            await this.dbContext.BulkInsertOrUpdateOrDeleteAsync(repoEntities);
+            await this.dbContext.BulkInsertOrUpdateAsync(repoEntities);
         }
     }
 }

@@ -19,11 +19,11 @@ namespace AzureDevOpsDataCollector.Core.Clients
             }
         }
 
-        public async Task BulkInsertOrUpdateOrDeleteAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
+        public async Task BulkInsertOrUpdateAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
         {
-            Logger.WriteLine($"Insert/Update/Delete {entities.Count} entities...");
-            await DbContextBulkExtensions.BulkInsertOrUpdateOrDeleteAsync(this, entities, bulkConfig);
-            Logger.WriteLine($"Insert/Update/Delete {entities.Count} successfully");
+            Logger.WriteLine($"Insert or Update {entities.Count} entities...");
+            await DbContextBulkExtensions.BulkInsertOrUpdateAsync(this, entities, bulkConfig);
+            Logger.WriteLine($"Insert or Update {entities.Count} successfully");
         }
     }
 }
