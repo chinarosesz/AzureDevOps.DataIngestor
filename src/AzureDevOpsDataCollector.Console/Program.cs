@@ -24,7 +24,7 @@ namespace AzureDevOpsDataCollector.Console
                 parsedOptions.PersonalAccessToken = Environment.GetEnvironmentVariable("PersonalAccessToken");
             }
 
-            AzureDevOpsClient azureDevOpsClient = new AzureDevOpsClient("litra");
+            AzureDevOpsClient azureDevOpsClient = new AzureDevOpsClient(parsedOptions.Account);
             azureDevOpsClient.ConnectWithBasicToken(parsedOptions.PersonalAccessToken);
 
             // Create DbContext client

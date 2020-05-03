@@ -3,13 +3,23 @@ using Microsoft.VisualStudio.Services.Common;
 using Polly;
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
-    public static class AzureDevOpsGitClientExtension
+    public class AzureDevOpsGitHttpClient : GitHttpClient
     {
-        public static async Task<List<GitCommitRef>> GetCommitsAsync(this GitHttpClient client, Guid repositoryId, string branchName, DateTime fromDate, DateTime toDate, int top = 100, int? skip = null)
+        public Task<string> CurrentResponseContent { get; private set; }
+        
+        public HttpResponseMessage CurrentHttpResponseMessage { get; private set; }
+
+        public AzureDevOpsGitHttpClient(Uri baseUrl, HttpMessageHandler pipeline, bool disposeHandler) : base(baseUrl, pipeline, disposeHandler)
+        {
+        }
+
+        public async Task<List<GitCommitRef>> GetCommitsAsync(Guid repositoryId, string branchName, DateTime fromDate, DateTime toDate, int top = 100, int? skip = null)
         {
             GitQueryCommitsCriteria searchCriteria = new GitQueryCommitsCriteria
             {
@@ -24,23 +34,30 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             List<GitCommitRef> commitRefs = await Policy.Handle<VssException>().WaitAndRetryAsync(3, sleepDurations => TimeSpan.FromMinutes(sleepDurations * 5)).ExecuteAsync(async () =>
             {
-                return await client.GetCommitsAsync(repositoryId, searchCriteria, skip, top);
+                return await this.GetCommitsAsync(repositoryId, searchCriteria, skip, top);
             });
 
             return commitRefs;
         }
 
-        public static async Task<List<GitRepository>> GetRepositoriesWithRetryAsync(this GitHttpClient client, string project)
+        public async Task<List<GitRepository>> GetRepositoriesWithRetryAsync(string project)
         {
             List<GitRepository> repos = await Policy.Handle<VssException>().WaitAndRetryAsync(3, sleepDurations => TimeSpan.FromSeconds(sleepDurations * 2)).ExecuteAsync(async () =>
             {
                 Logger.WriteLine($"Retrieving repositories for project {project}...");
-                List<GitRepository> repos = await client.GetRepositoriesAsync(project);
+                List<GitRepository> repos = await this.GetRepositoriesAsync(project);
                 Logger.WriteLine($"Retrieved {repos.Count} repositories successfully");
                 return repos;
             });
 
             return repos;
+        }
+
+        protected override Task<T> ReadJsonContentAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default)
+        {
+            this.CurrentHttpResponseMessage = response;
+            this.CurrentResponseContent = response.Content.ReadAsStringAsync();
+            return base.ReadJsonContentAsync<T>(response, cancellationToken);
         }
     }
 }
