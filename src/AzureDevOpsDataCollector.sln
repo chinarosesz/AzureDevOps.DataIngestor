@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.AzureDevOpsDataCollector.Core", "Test.AzureDevOpsDataCollector.Core\Test.AzureDevOpsDataCollector.Core.csproj", "{53F3DCB8-0639-49E7-B03D-AF1678DDC211}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{F1D579FC-D11D-4244-971E-58218894BEBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1D579FC-D11D-4244-971E-58218894BEBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F1D579FC-D11D-4244-971E-58218894BEBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{53F3DCB8-0639-49E7-B03D-AF1678DDC211}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53F3DCB8-0639-49E7-B03D-AF1678DDC211}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53F3DCB8-0639-49E7-B03D-AF1678DDC211}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53F3DCB8-0639-49E7-B03D-AF1678DDC211}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
