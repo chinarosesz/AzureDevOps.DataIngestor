@@ -5,7 +5,7 @@ using System;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
-    public sealed class AzureDevOpsClient : IDisposable
+    public class AzureDevOpsClient : IDisposable
     {
         public string OrganizationName { get; private set; }
         public VssConnection VssConnection { get; private set; }
@@ -30,7 +30,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             // Configure timeout and retry on DevOps HTTP clients
             this.VssConnection.Settings.SendTimeout = TimeSpan.FromMinutes(5);
-            this.VssConnection.Settings.MaxRetryRequest = 2;
         }
 
         /// <summary>
@@ -45,7 +44,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             // Configure timeout and retry on DevOps HTTP clients
             this.VssConnection.Settings.SendTimeout = TimeSpan.FromMinutes(5);
-            this.VssConnection.Settings.MaxRetryRequest = 2;
         }
 
         public void Dispose()

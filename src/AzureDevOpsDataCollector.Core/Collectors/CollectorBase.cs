@@ -18,7 +18,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         protected void DisplayProjectHeader(string project)
         {
             Logger.WriteLine();
-            Logger.WriteLine($"{this.GetType().Name}:Start Collecting Project {project}".ToUpper());
+            Logger.WriteLine($"{this.GetType().Name}:Collecting data for project {project}".ToUpper());
         }
     }
 }

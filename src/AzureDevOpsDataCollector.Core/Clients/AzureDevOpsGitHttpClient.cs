@@ -1,6 +1,4 @@
 using Microsoft.TeamFoundation.SourceControl.WebApi;
-using Microsoft.VisualStudio.Services.Common;
-using Polly;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -32,7 +30,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 },
             };
 
-            List<GitCommitRef> commitRefs = await this.RetryWhenThrottled(async () =>
+            List<GitCommitRef> commitRefs = await RetryHelper.WhenAzureDevOpsThrottled(async () =>
             {
                 return await this.GetCommitsAsync(repositoryId, searchCriteria, skip, top);
             });
@@ -42,7 +40,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         public async Task<List<GitRepository>> GetRepositoriesWithRetryAsync(string project)
         {
-            List<GitRepository> repos = await this.RetryWhenThrottled(async () =>
+            List<GitRepository> repos = await RetryHelper.WhenAzureDevOpsThrottled(async () =>
             {
                 Logger.WriteLine($"Retrieving repositories for project {project}...");
                 List<GitRepository> repos = await this.GetRepositoriesAsync(project);
@@ -59,16 +57,5 @@ namespace AzureDevOpsDataCollector.Core.Clients
             this.CurrentResponseContent = response.Content.ReadAsStringAsync();
             return base.ReadJsonContentAsync<T>(response, cancellationToken);
         }
-
-        private Task<T> RetryWhenThrottled<T>(Func<Task<T>> action)
-        {
-            Task<T> result = Policy
-                .Handle<VssServiceException>()
-                .WaitAndRetryAsync(3, sleepDurations => TimeSpan.FromMinutes(5))
-                .ExecuteAsync(action);
-
-            return result;
-        }
-
     }
 }

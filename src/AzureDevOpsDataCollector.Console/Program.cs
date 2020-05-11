@@ -2,7 +2,6 @@
 using AzureDevOpsDataCollector.Core.Collectors;
 using CommandLine;
 using EFCore.AutomaticMigrations;
-using System;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Console
@@ -13,17 +12,9 @@ namespace AzureDevOpsDataCollector.Console
         {
             // Parse command line
             CommandOptions parsedOptions = Program.ParseArguments(args);
-            if (parsedOptions == null)
-            {
-                return -1;
-            }
+            if (parsedOptions == null) { return -1; }
 
             // Create AzureDevOps client
-            if (parsedOptions.PersonalAccessToken == null)
-            {
-                parsedOptions.PersonalAccessToken = Environment.GetEnvironmentVariable("PersonalAccessToken");
-            }
-
             AzureDevOpsClient azureDevOpsClient = new AzureDevOpsClient(parsedOptions.Account);
             azureDevOpsClient.ConnectWithBasicToken(parsedOptions.PersonalAccessToken);
 
