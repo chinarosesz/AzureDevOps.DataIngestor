@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.TeamFoundation.Common;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
@@ -30,8 +31,23 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             foreach (string projectName in this.projectNames)
             {
                 this.DisplayProjectHeader(projectName);
-                List<GitRepository> repos = await gitHttpClient.GetRepositoriesWithRetryAsync(projectName);
-                await this.InsertOrUpdateRepositories(repos, projectName);
+                //while (true)
+                //{
+                //    //for (int i = 0; i < 100; i++)
+                //    IEnumerable<int> values = Enumerable.Range(1, 1000);
+                //    Parallel.ForEach(values, (currentValue) =>
+                //    {
+                //        List<GitRepository> repos = gitHttpClient.GetRepos(projectName).Result;
+                //    });
+
+                //}
+
+                while (true)
+                {
+                    Task taskA = Task.Run(() => gitHttpClient.GetRepos(projectName));
+                }
+
+                //await this.InsertOrUpdateRepositories(repos, projectName);
             }
         }
 

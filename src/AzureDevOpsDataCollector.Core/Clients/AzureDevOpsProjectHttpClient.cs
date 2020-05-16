@@ -19,7 +19,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         {
             List<TeamProjectReference> projects = new List<TeamProjectReference>();
 
-            projects = await RetryHelper.WhenAzureDevOpsThrottled(async () =>
+            projects = await RetryHelper.WhenVssException(async () =>
             {
                 string continuationToken = null;
 
