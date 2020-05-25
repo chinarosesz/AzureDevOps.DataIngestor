@@ -14,6 +14,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         internal VssGitClient(Uri baseUrl, VssCredentials credentials) : base(baseUrl, credentials)
         {
+            this.VssHttpContext = new VssHttpContext();
         }
 
         public async Task<List<GitCommitRef>> GetCommitsAsync(Guid repositoryId, string branchName, DateTime fromDate, DateTime toDate, int top = 100, int? skip = null)
