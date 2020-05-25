@@ -1,6 +1,9 @@
+using Microsoft.TeamFoundation.SourceControl.WebApi;
+using Microsoft.TeamFoundation.TestManagement.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Polly;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -42,5 +45,20 @@ namespace AzureDevOpsDataCollector.Core.Clients
             return result;
         }
 
+        public static async Task<T> SleepAndRetry<T>(TimeSpan timeToSleep, Func<Task<T>> action)
+        {
+            if (timeToSleep.TotalSeconds > 0)
+            {
+                Logger.WriteLine($"Sleeping for {timeToSleep.TotalSeconds} seconds");
+                await Task.Delay(timeToSleep);
+            }
+            
+            return await action();
+        }
+
+        internal static Task SleepAndRetry(object value, Func<Task<List<GitRepository>>> p)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

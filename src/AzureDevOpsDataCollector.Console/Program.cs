@@ -15,15 +15,14 @@ namespace AzureDevOpsDataCollector.Console
             if (parsedOptions == null) { return -1; }
 
             // Create AzureDevOps client
-            AzureDevOpsClient azureDevOpsClient = new AzureDevOpsClient(parsedOptions.Account);
-            azureDevOpsClient.ConnectWithBasicToken(parsedOptions.PersonalAccessToken);
+            VssClientConnector vssClientConnector = new VssClientConnector(parsedOptions.Account, parsedOptions.PersonalAccessToken);
 
             // Create DbContext client
             AzureDevOpsDbContext dbContext = new AzureDevOpsDbContext();
             await MigrateDatabaseToLatestVersion.ExecuteAsync(dbContext);
 
             // Collect Repository data
-            RepositoryCollector repositoryCollector = new RepositoryCollector(azureDevOpsClient, dbContext, parsedOptions.Projects);
+            RepositoryCollector repositoryCollector = new RepositoryCollector(vssClientConnector, dbContext, parsedOptions.Projects);
             await repositoryCollector.RunAsync();
 
             return 0;

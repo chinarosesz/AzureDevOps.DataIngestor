@@ -1,24 +1,53 @@
-﻿using Microsoft.VisualStudio.Services.Common;
+﻿using AzureDevOpsDataCollector.Core.Clients.AzureDevOps;
+using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
-    public class AzureDevOpsClient : IDisposable
+    public class VssClientConnector : IDisposable
     {
-        public string OrganizationName { get; private set; }
-        public VssConnection VssConnection { get; private set; }
-
-        public AzureDevOpsClient(string organization)
+        public VssClientConnector(string organization, string token, VssTokenType tokenType = VssTokenType.Basic)
         {
             this.OrganizationName = organization;
+
+            if (tokenType == VssTokenType.Basic)
+            {
+                this.ConnectWithBasicToken(token);
+            }
+            else if (tokenType == VssTokenType.Bearer)
+            {
+                this.ConnectWithBearerToken(token);
+            }
+        }
+
+        public string OrganizationName { get; private set; }
+        
+        public VssConnection VssConnection { get; private set; }
+
+        public VssGitClient GitClient 
+        { 
+            get 
+            {
+                VssGitClient client = new VssGitClient(this.VssConnection.Uri, this.VssConnection.Credentials);
+                return client;
+            } 
+        }
+
+        public VssProjectClient ProjectClient
+        {
+            get
+            {
+                VssProjectClient client = new VssProjectClient(this.VssConnection.Uri, this.VssConnection.Credentials);
+                return client;
+            }
         }
 
         /// <summary>
         /// Init Devops clients with either a personal access token (basic auth) or pass in authentication result with an access token (bearer)
         /// </summary>
-        public void ConnectWithBasicToken(string personalAccessToken)
+        private void ConnectWithBasicToken(string personalAccessToken)
         {
             Uri collectionUri = new Uri($"https://dev.azure.com/{this.OrganizationName}");
 
@@ -35,7 +64,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         /// <summary>
         /// Init Devops clients with either a personal access token (basic auth) or pass in authentication result with an access token (bearer)
         /// </summary>
-        public void ConnectWithBearerToken(string bearerToken)
+        private void ConnectWithBearerToken(string bearerToken)
         {
             Uri collectionUri = new Uri($"https://dev.azure.com/{this.OrganizationName}");
             VssOAuthAccessTokenCredential oAuthCredentials = new VssOAuthAccessTokenCredential(bearerToken);
