@@ -49,7 +49,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     ProjectId = repo.ProjectReference.Id,
                     ProjectName = repo.ProjectReference.Name,
                     WebUrl = repo.RemoteUrl,
-                    RequestUrl = this.vssClientConnector.GitClient.HttpContext.RequestUri.ToString(),
+                    RequestUrl = this.vssClientConnector.GitClient.VssHttpContext.RequestUri.ToString(),
                     RowUpdatedDate = this.Now,
                 };
                 repoEntities.Add(repoEntity);
@@ -57,8 +57,8 @@ namespace AzureDevOpsDataCollector.Core.Collectors
 
             RequestEntity requestEntity = new RequestEntity
             {
-                RequestUrl = this.vssClientConnector.GitClient.HttpContext.RequestUri.ToString(),
-                ResponseContent = await this.vssClientConnector.GitClient.HttpContext.ResponseContent,
+                RequestUrl = this.vssClientConnector.GitClient.VssHttpContext.RequestUri.ToString(),
+                ResponseContent = await this.vssClientConnector.GitClient.VssHttpContext.ResponseContent,
                 OrganizationName = this.vssClientConnector.OrganizationName,
                 ProjectName = projectName,
                 RowUpdatedDate = this.Now,

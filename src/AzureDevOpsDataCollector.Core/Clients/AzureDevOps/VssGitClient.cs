@@ -10,7 +10,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssGitClient : GitHttpClient
     {
-        public VssClientContext HttpContext { get; private set; }
+        public VssHttpContext VssHttpContext { get; private set; }
 
         internal VssGitClient(Uri baseUrl, VssCredentials credentials) : base(baseUrl, credentials)
         {
@@ -29,7 +29,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 },
             };
 
-            List<GitCommitRef> commitRefs = await RetryHelper.SleepAndRetry(this.HttpContext.RetryAfter, async () =>
+            List<GitCommitRef> commitRefs = await RetryHelper.SleepAndRetry(this.VssHttpContext.RetryAfter, async () =>
             {
                 return await this.GetCommitsAsync(repositoryId, searchCriteria, skip, top);
             });
@@ -39,7 +39,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         public async Task<List<GitRepository>> GetReposAsync(string project)
         {
-            List<GitRepository> repos = await RetryHelper.SleepAndRetry(this.HttpContext.RetryAfter, async () =>
+            List<GitRepository> repos = await RetryHelper.SleepAndRetry(this.VssHttpContext.RetryAfter, async () =>
             {
                 Logger.WriteLine($"Retrieving repostiories for project {project}");
                 return await this.GetRepositoriesAsync(project);
@@ -50,7 +50,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         protected override Task<T> ReadJsonContentAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default)
         {
-            this.HttpContext = new VssClientContext(response);
+            this.VssHttpContext = new VssHttpContext(response);
             return base.ReadJsonContentAsync<T>(response, cancellationToken);
         }
     }

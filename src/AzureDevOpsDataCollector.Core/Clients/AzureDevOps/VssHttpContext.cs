@@ -4,11 +4,18 @@ using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
-    public class VssClientContext
+    public class VssHttpContext
     {
         private readonly HttpResponseMessage responseMessage;
 
-        public VssClientContext(HttpResponseMessage responseMessage)
+        public VssHttpContext()
+        {
+            this.RetryAfter = new TimeSpan(0);
+            this.ResponseContent = string.Empty;
+            this.RequestUri = null;
+        }
+
+        public VssHttpContext(HttpResponseMessage responseMessage)
         {
             this.responseMessage = responseMessage;
         }

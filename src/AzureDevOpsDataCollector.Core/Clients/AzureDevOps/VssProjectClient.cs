@@ -13,7 +13,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssProjectClient : ProjectHttpClient
     {
-        public VssClientContext HttpContext { get; private set; }
+        public VssHttpContext HttpContext { get; private set; }
 
         internal VssProjectClient(Uri baseUrl, VssCredentials credentials) : base(baseUrl, credentials)
         {
@@ -50,7 +50,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         protected override Task<T> ReadJsonContentAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default)
         {
-            this.HttpContext = new VssClientContext(response);
+            this.HttpContext = new VssHttpContext(response);
             return base.ReadJsonContentAsync<T>(response, cancellationToken);
         }
     }
