@@ -18,7 +18,7 @@ namespace AzureDevOpsDataCollector.Console
             VssClientConnector vssClientConnector = new VssClientConnector(parsedOptions.Account, parsedOptions.PersonalAccessToken);
 
             // Create DbContext client
-            AzureDevOpsDbContext dbContext = new AzureDevOpsDbContext();
+            VssDbContext dbContext = new VssDbContext();
             await MigrateDatabaseToLatestVersion.ExecuteAsync(dbContext);
 
             // Collect Repository data

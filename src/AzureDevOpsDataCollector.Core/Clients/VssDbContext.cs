@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
-    public class AzureDevOpsDbContext : DbContext
+    public class VssDbContext : DbContext
     {
-        public DbSet<RepositoryEntity> AzureDevOpsRepositoryEntities { get; set; }
-        public DbSet<RequestEntity> AzureDevOpsRequestEntities { get; set; }
+        public DbSet<VssRepositoryEntity> VssRepositoryEntities { get; set; }
+        public DbSet<VssRequestEntity> VssRequestEntities { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

@@ -11,11 +11,11 @@ namespace AzureDevOpsDataCollector.Core.Collectors
     public class RepositoryCollector : CollectorBase
     {
         private readonly VssClientConnector vssClientConnector;
-        private readonly AzureDevOpsDbContext dbContext;
+        private readonly VssDbContext dbContext;
         private readonly IEnumerable<string> projectNames;
         private IEnumerable<TeamProjectReference> projects;
 
-        public RepositoryCollector(VssClientConnector vssClientConnector, AzureDevOpsDbContext dbContext, IEnumerable<string> projectNames)
+        public RepositoryCollector(VssClientConnector vssClientConnector, VssDbContext dbContext, IEnumerable<string> projectNames)
         {
             this.vssClientConnector = vssClientConnector;
             this.dbContext = dbContext;
@@ -38,11 +38,11 @@ namespace AzureDevOpsDataCollector.Core.Collectors
 
         private async Task InsertOrUpdateRepositories(List<GitRepository> repositories, string projectName)
         {
-            List<RepositoryEntity> repoEntities = new List<RepositoryEntity>();
+            List<VssRepositoryEntity> repoEntities = new List<VssRepositoryEntity>();
 
             foreach (GitRepository repo in repositories)
             {
-                RepositoryEntity repoEntity = new RepositoryEntity
+                VssRepositoryEntity repoEntity = new VssRepositoryEntity
                 {
                     OrganizationName = this.vssClientConnector.OrganizationName,
                     RepoId = repo.Id,
@@ -57,7 +57,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 repoEntities.Add(repoEntity);
             }
 
-            RequestEntity requestEntity = new RequestEntity
+            VssRequestEntity requestEntity = new VssRequestEntity
             {
                 RequestUrl = this.vssClientConnector.GitClient.VssHttpContext.RequestUri.ToString(),
                 ResponseContent = this.vssClientConnector.GitClient.VssHttpContext.ResponseContent,
@@ -69,7 +69,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             using (IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction())
             {
                 await this.dbContext.BulkInsertOrUpdateAsync(repoEntities);
-                await this.dbContext.BulkInsertOrUpdateAsync(new List<RequestEntity> { requestEntity });
+                await this.dbContext.BulkInsertOrUpdateAsync(new List<VssRequestEntity> { requestEntity });
                 transaction.Commit();
             }
         }

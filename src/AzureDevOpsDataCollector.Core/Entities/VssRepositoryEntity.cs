@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AzureDevOpsDataCollector.Core.Entities
 {
-    [Table("Repository")]
-    public class RepositoryEntity : BaseEntity
+    [Table("VssRepository")]
+    public class VssRepositoryEntity : VssBaseEntity
     {
         [Key]
         public Guid RepoId { get; set; }
