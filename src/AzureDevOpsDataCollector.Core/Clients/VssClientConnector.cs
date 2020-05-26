@@ -6,8 +6,35 @@ using System;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
-    public class VssClientConnector : IDisposable
+    public class VssClientConnector 
     {
+        private VssGitClient gitClient;
+
+        public string OrganizationName { get; private set; }
+
+        public VssConnection VssConnection { get; private set; }
+
+        public VssGitClient GitClient
+        {
+            get
+            {
+                if (this.gitClient == null)
+                {
+                    this.gitClient = new VssGitClient(this.VssConnection.Uri, this.VssConnection.Credentials);
+                }
+                return this.gitClient;
+            }
+        }
+
+        public VssProjectClient ProjectClient
+        {
+            get
+            {
+                VssProjectClient client = new VssProjectClient(this.VssConnection.Uri, this.VssConnection.Credentials);
+                return client;
+            }
+        }
+
         public VssClientConnector(string organization, string token, VssTokenType tokenType = VssTokenType.Basic)
         {
             this.OrganizationName = organization;
@@ -19,28 +46,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
             else if (tokenType == VssTokenType.Bearer)
             {
                 this.ConnectWithBearerToken(token);
-            }
-        }
-
-        public string OrganizationName { get; private set; }
-        
-        public VssConnection VssConnection { get; private set; }
-
-        public VssGitClient GitClient 
-        { 
-            get 
-            {
-                VssGitClient client = new VssGitClient(this.VssConnection.Uri, this.VssConnection.Credentials);
-                return client;
-            } 
-        }
-
-        public VssProjectClient ProjectClient
-        {
-            get
-            {
-                VssProjectClient client = new VssProjectClient(this.VssConnection.Uri, this.VssConnection.Credentials);
-                return client;
             }
         }
 
@@ -73,11 +78,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             // Configure timeout and retry on DevOps HTTP clients
             this.VssConnection.Settings.SendTimeout = TimeSpan.FromMinutes(5);
-        }
-
-        public void Dispose()
-        {
-            this.VssConnection?.Dispose();
         }
     }
 }

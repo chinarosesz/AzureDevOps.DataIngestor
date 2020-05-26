@@ -41,11 +41,23 @@ namespace AzureDevOpsDataCollector.Core.Clients
             return projects;
         }
 
-        public async Task<IEnumerable<string>> GetProjectNamesAsync()
+        public async Task<IEnumerable<TeamProjectReference>> GetProjectNamesAsync(IEnumerable<string> projectNames)
         {
-            List<TeamProjectReference> projects = await this.GetProjectsAsync();
-            IEnumerable<string> projectNames = projects.Select(v => v.Name);
-            return projectNames;
+            List<TeamProjectReference> projects = new List<TeamProjectReference>();
+
+            if (projectNames.IsNullOrEmpty())
+            {
+                projects = await this.GetProjectsAsync();
+            }
+            else
+            {
+                foreach (TeamProjectReference project in projects)
+                {
+                    projects.Add(project);
+                }
+            }
+
+            return projects;
         }
 
         protected override Task<T> ReadJsonContentAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default)

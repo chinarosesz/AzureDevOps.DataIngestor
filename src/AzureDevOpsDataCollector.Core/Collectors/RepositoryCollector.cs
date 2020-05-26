@@ -1,7 +1,7 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.TeamFoundation.Common;
+using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -10,27 +10,29 @@ namespace AzureDevOpsDataCollector.Core.Collectors
 {
     public class RepositoryCollector : CollectorBase
     {
-        private IEnumerable<string> projectNames;
+        private readonly VssClientConnector vssClientConnector;
+        private readonly AzureDevOpsDbContext dbContext;
+        private readonly IEnumerable<string> projectNames;
+        private IEnumerable<TeamProjectReference> projects;
 
-        public RepositoryCollector(VssClientConnector vssClientConnector, AzureDevOpsDbContext dbContext, IEnumerable<string> projectNames) : base(vssClientConnector, dbContext)
+        public RepositoryCollector(VssClientConnector vssClientConnector, AzureDevOpsDbContext dbContext, IEnumerable<string> projectNames)
         {
+            this.vssClientConnector = vssClientConnector;
+            this.dbContext = dbContext;
             this.projectNames = projectNames;
         }
 
         public async Task RunAsync()
         {
             // Get projects
-            if (projectNames.IsNullOrEmpty())
-            {
-                this.projectNames = await this.vssClientConnector.ProjectClient.GetProjectNamesAsync();
-            }
+            this.projects = await this.vssClientConnector.ProjectClient.GetProjectNamesAsync(this.projectNames);
 
             // Get repos
-            foreach (string projectName in this.projectNames)
+            foreach (TeamProjectReference project in this.projects)
             {
-                this.DisplayProjectHeader(projectName);
-                var repos = await this.vssClientConnector.GitClient.GetReposAsync(projectName);
-                await this.InsertOrUpdateRepositories(repos, projectName);
+                this.DisplayProjectHeader(project.Name);
+                List<GitRepository> repos = await this.vssClientConnector.GitClient.GetReposAsync(project.Name);
+                await this.InsertOrUpdateRepositories(repos, project.Name);
             }
         }
 
@@ -58,7 +60,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             RequestEntity requestEntity = new RequestEntity
             {
                 RequestUrl = this.vssClientConnector.GitClient.VssHttpContext.RequestUri.ToString(),
-                ResponseContent = await this.vssClientConnector.GitClient.VssHttpContext.ResponseContent,
+                ResponseContent = this.vssClientConnector.GitClient.VssHttpContext.ResponseContent,
                 OrganizationName = this.vssClientConnector.OrganizationName,
                 ProjectName = projectName,
                 RowUpdatedDate = this.Now,

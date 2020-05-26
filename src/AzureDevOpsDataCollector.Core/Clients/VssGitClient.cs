@@ -49,10 +49,10 @@ namespace AzureDevOpsDataCollector.Core.Clients
             return repos;
         }
 
-        protected override Task<T> ReadJsonContentAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default)
+        protected override Task HandleResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
         {
             this.VssHttpContext = new VssHttpContext(response);
-            return base.ReadJsonContentAsync<T>(response, cancellationToken);
+            return base.HandleResponseAsync(response, cancellationToken);
         }
     }
 }

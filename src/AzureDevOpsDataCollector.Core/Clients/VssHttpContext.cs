@@ -1,14 +1,15 @@
 using System;
 using System.Net.Http;
-using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssHttpContext
     {
         private readonly HttpResponseMessage responseMessage;
-        public TimeSpan RetryAfter { get; private set; }
-        
+        public TimeSpan RetryAfter { get; }
+        public string ResponseContent { get; }
+        public Uri RequestUri { get; }
+
         public VssHttpContext()
         {
             this.RetryAfter = new TimeSpan(0);
@@ -18,16 +19,8 @@ namespace AzureDevOpsDataCollector.Core.Clients
         {
             this.responseMessage = responseMessage;
             this.RetryAfter = this.responseMessage.Headers.RetryAfter == null ? new TimeSpan(0) : this.responseMessage.Headers.RetryAfter.Delta.Value;
-        }
-
-        public Task<string> ResponseContent 
-        { 
-            get { return this.responseMessage.Content.ReadAsStringAsync(); }
-        }
-
-        public Uri RequestUri
-        {
-            get { return this.responseMessage.RequestMessage.RequestUri; }
+            this.ResponseContent = this.responseMessage.Content.ReadAsStringAsync().Result;
+            this.RequestUri = this.responseMessage.RequestMessage.RequestUri;
         }
     }
 }
