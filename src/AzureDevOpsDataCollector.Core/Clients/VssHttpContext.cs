@@ -5,7 +5,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssHttpContext
     {
-        private readonly HttpResponseMessage responseMessage;
+        private HttpResponseMessage responseMessage;
         public TimeSpan RetryAfter { get; }
         public string ResponseContent { get; }
         public Uri RequestUri { get; }

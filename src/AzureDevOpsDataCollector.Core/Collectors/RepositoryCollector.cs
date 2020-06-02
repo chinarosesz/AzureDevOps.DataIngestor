@@ -3,7 +3,11 @@ using AzureDevOpsDataCollector.Core.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
@@ -32,13 +36,16 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             {
                 this.DisplayProjectHeader(project.Name);
                 List<GitRepository> repos = await this.vssClientConnector.GitClient.GetReposAsync(project.Name);
-                await this.InsertOrUpdateRepositories(repos, project.Name);
+                await this.InsertOrUpdateRepositories(repos);
             }
         }
 
-        private async Task InsertOrUpdateRepositories(List<GitRepository> repositories, string projectName)
+        private async Task InsertOrUpdateRepositories(List<GitRepository> repositories)
         {
             List<VssRepositoryEntity> repoEntities = new List<VssRepositoryEntity>();
+            JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings();
+            jsonSerializerSettings.Converters.Add(new StringEnumConverter());
+            jsonSerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
 
             foreach (GitRepository repo in repositories)
             {
@@ -51,25 +58,15 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     ProjectId = repo.ProjectReference.Id,
                     ProjectName = repo.ProjectReference.Name,
                     WebUrl = repo.RemoteUrl,
-                    RequestUrl = this.vssClientConnector.GitClient.VssHttpContext.RequestUri.ToString(),
                     RowUpdatedDate = this.Now,
+                    RequestUrl = JsonConvert.SerializeObject(repo, jsonSerializerSettings),
                 };
                 repoEntities.Add(repoEntity);
             }
 
-            VssRequestEntity requestEntity = new VssRequestEntity
-            {
-                RequestUrl = this.vssClientConnector.GitClient.VssHttpContext.RequestUri.ToString(),
-                ResponseContent = this.vssClientConnector.GitClient.VssHttpContext.ResponseContent,
-                OrganizationName = this.vssClientConnector.OrganizationName,
-                ProjectName = projectName,
-                RowUpdatedDate = this.Now,
-            };
-
             using (IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction())
             {
                 await this.dbContext.BulkInsertOrUpdateAsync(repoEntities);
-                await this.dbContext.BulkInsertOrUpdateAsync(new List<VssRequestEntity> { requestEntity });
                 transaction.Commit();
             }
         }
