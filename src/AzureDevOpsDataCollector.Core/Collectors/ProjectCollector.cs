@@ -29,10 +29,10 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             List<TeamProjectReference> projects = await this.vssClientConnector.ProjectClient.GetProjectsAsync();
 
             // Insert or update projects
-            await this.InsertOrUpdateRepositories(projects);
+            await this.InsertOrUpdateProjects(projects);
         }
 
-        private async Task InsertOrUpdateRepositories(List<TeamProjectReference> projects)
+        private async Task InsertOrUpdateProjects(List<TeamProjectReference> projects)
         {
             List<VssProjectEntity> entities = new List<VssProjectEntity>();
             JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings();
