@@ -9,7 +9,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
     public class VssDbContext : DbContext
     {
         public DbSet<VssRepositoryEntity> VssRepositoryEntities { get; set; }
-        public DbSet<VssRequestEntity> VssRequestEntities { get; set; }
+        public DbSet<VssProjectEntity> VssProjectEntities { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

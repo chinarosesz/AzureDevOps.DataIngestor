@@ -22,9 +22,18 @@ namespace AzureDevOpsDataCollector.Console
             await MigrateDatabaseToLatestVersion.ExecuteAsync(dbContext);
 
             // Collect Repository data
-            RepositoryCollector repositoryCollector = new RepositoryCollector(vssClientConnector, dbContext, parsedOptions.Projects);
-            await repositoryCollector.RunAsync();
+            if (parsedOptions.CollectorType == CollectorType.Repository)
+            {
+                RepositoryCollector repositoryCollector = new RepositoryCollector(vssClientConnector, dbContext, parsedOptions.Projects);
+                await repositoryCollector.RunAsync();
+            }
+            else if (parsedOptions.CollectorType == CollectorType.Project)
+            {
+                ProjectCollector collector = new ProjectCollector(vssClientConnector, dbContext, parsedOptions.Projects);
+                await collector.RunAsync();
+            }
 
+            // Returns zero on success
             return 0;
         }
 
@@ -37,12 +46,10 @@ namespace AzureDevOpsDataCollector.Console
             // Map results after parsing
             results.MapResult<CommandOptions, object>((CommandOptions opts) => commandOptions = opts, (errs) => 1);
 
-            // Throw if not able to parse
-            if (results.Tag == ParserResultType.NotParsed)
-            {
-                return null;
-            }
+            // Return null if not able to parse
+            if (results.Tag == ParserResultType.NotParsed) { return null; }
 
+            // Return list of parsed commands
             return commandOptions;
         }
     }

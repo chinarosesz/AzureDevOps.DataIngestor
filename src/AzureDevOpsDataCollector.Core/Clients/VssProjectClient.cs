@@ -17,6 +17,8 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         public async Task<List<TeamProjectReference>> GetProjectsAsync()
         {
+            Logger.WriteLine("Retrieving projects");
+
             List<TeamProjectReference> projects = new List<TeamProjectReference>();
 
             projects = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), async () =>
@@ -33,6 +35,8 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
                 return projects;
             });
+
+            Logger.WriteLine($"Retrieved {projects.Count} projects");
 
             return projects;
         }

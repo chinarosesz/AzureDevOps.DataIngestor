@@ -57,7 +57,6 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     ProjectId = repo.ProjectReference.Id,
                     ProjectName = repo.ProjectReference.Name,
                     WebUrl = repo.RemoteUrl,
-                    RowUpdatedDate = this.Now,
                     Data = JsonConvert.SerializeObject(repo, jsonSerializerSettings),
                 };
                 repoEntities.Add(repoEntity);
