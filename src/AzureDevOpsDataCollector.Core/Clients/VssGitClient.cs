@@ -8,15 +8,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssGitClient : GitHttpClient
     {
-        private TimeSpan RetryAfter
-        {
-            get
-            {
-                TimeSpan retryAfter = this.LastResponseContext?.Headers.RetryAfter?.Delta.Value ?? TimeSpan.Zero;
-                return retryAfter;
-            }
-        }
-
         internal VssGitClient(Uri baseUrl, VssCredentials credentials) : base(baseUrl, credentials)
         {
         }
@@ -34,8 +25,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 },
             };
 
-            List<GitCommitRef> commitRefs = await RetryHelper.SleepAndRetry(this.RetryAfter, async () =>
-
+            List<GitCommitRef> commitRefs = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), async () =>
             {
                 return await this.GetCommitsAsync(repositoryId, searchCriteria, skip, top);
             });
@@ -45,7 +35,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         public async Task<List<GitRepository>> GetReposAsync(string project)
         {
-            List<GitRepository> repos = await RetryHelper.SleepAndRetry(this.RetryAfter, async () =>
+            List<GitRepository> repos = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), async () =>
             {
                 Logger.WriteLine($"Retrieving repostiories for project {project}");
                 return await this.GetRepositoriesAsync(project);

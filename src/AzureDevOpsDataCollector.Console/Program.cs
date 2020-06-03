@@ -15,7 +15,7 @@ namespace AzureDevOpsDataCollector.Console
             if (parsedOptions == null) { return -1; }
 
             // Create AzureDevOps client
-            VssClientConnector vssClientConnector = new VssClientConnector(parsedOptions.Account, parsedOptions.PersonalAccessToken);
+            VssClient vssClientConnector = new VssClient(parsedOptions.Account, parsedOptions.PersonalAccessToken);
 
             // Create DbContext client
             VssDbContext dbContext = new VssDbContext();

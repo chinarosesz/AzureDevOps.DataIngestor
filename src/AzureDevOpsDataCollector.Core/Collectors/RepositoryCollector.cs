@@ -7,21 +7,20 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
 {
     public class RepositoryCollector : CollectorBase
     {
-        private readonly VssClientConnector vssClientConnector;
+        private readonly VssClient vssClientConnector;
         private readonly VssDbContext dbContext;
         private readonly IEnumerable<string> projectNames;
         private IEnumerable<TeamProjectReference> projects;
 
-        public RepositoryCollector(VssClientConnector vssClientConnector, VssDbContext dbContext, IEnumerable<string> projectNames)
+        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames)
         {
-            this.vssClientConnector = vssClientConnector;
+            this.vssClientConnector = vssClient;
             this.dbContext = dbContext;
             this.projectNames = projectNames;
         }
@@ -59,16 +58,14 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     ProjectName = repo.ProjectReference.Name,
                     WebUrl = repo.RemoteUrl,
                     RowUpdatedDate = this.Now,
-                    RequestUrl = JsonConvert.SerializeObject(repo, jsonSerializerSettings),
+                    Data = JsonConvert.SerializeObject(repo, jsonSerializerSettings),
                 };
                 repoEntities.Add(repoEntity);
             }
 
-            using (IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction())
-            {
-                await this.dbContext.BulkInsertOrUpdateAsync(repoEntities);
-                transaction.Commit();
-            }
+            using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
+            await this.dbContext.BulkInsertOrUpdateAsync(repoEntities);
+            transaction.Commit();
         }
     }
 }

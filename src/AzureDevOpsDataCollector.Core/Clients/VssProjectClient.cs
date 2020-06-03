@@ -5,16 +5,12 @@ using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssProjectClient : ProjectHttpClient
     {
-        public VssHttpContext HttpContext { get; private set; }
-
         internal VssProjectClient(Uri baseUrl, VssCredentials credentials) : base(baseUrl, credentials)
         {
         }
@@ -23,7 +19,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         {
             List<TeamProjectReference> projects = new List<TeamProjectReference>();
 
-            projects = await RetryHelper.WhenVssException(async () =>
+            projects = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), async () =>
             {
                 string continuationToken = null;
 
@@ -58,12 +54,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
             }
 
             return projects;
-        }
-
-        protected override Task<T> ReadJsonContentAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken = default)
-        {
-            this.HttpContext = new VssHttpContext(response);
-            return base.ReadJsonContentAsync<T>(response, cancellationToken);
         }
     }
 }

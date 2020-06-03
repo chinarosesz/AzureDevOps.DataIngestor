@@ -12,12 +12,12 @@ namespace AzureDevOpsDataCollector.Core.Entities
 
         public Guid ProjectId { get; set; }
 
+        public string ProjectName { get; set; }
+
         public string RepoName { get; set; }
 
         public string DefaultBranch { get; set; }
 
         public string WebUrl { get; set; }
-
-        public string RequestUrl { get; set; }
     }
 }

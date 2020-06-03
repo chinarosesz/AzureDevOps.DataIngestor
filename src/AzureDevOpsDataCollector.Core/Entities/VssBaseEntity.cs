@@ -6,7 +6,7 @@ namespace AzureDevOpsDataCollector.Core.Entities
     {
         public string OrganizationName { get; set; }
 
-        public string ProjectName { get; set; }
+        public string Data { get; set; }
 
         public DateTime RowUpdatedDate { get; set; }
     }

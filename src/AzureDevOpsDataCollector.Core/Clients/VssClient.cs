@@ -6,7 +6,7 @@ using System;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
-    public class VssClientConnector 
+    public class VssClient 
     {
         private VssGitClient gitClient;
 
@@ -35,7 +35,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             }
         }
 
-        public VssClientConnector(string organization, string token, VssTokenType tokenType = VssTokenType.Basic)
+        public VssClient(string organization, string token, VssTokenType tokenType = VssTokenType.Basic)
         {
             this.OrganizationName = organization;
 
