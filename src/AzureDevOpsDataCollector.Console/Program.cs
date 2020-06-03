@@ -1,6 +1,7 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Collectors;
 using CommandLine;
+using CommandLine.Text;
 using EFCore.AutomaticMigrations;
 using System.Threading.Tasks;
 
@@ -40,14 +41,25 @@ namespace AzureDevOpsDataCollector.Console
         private static CommandOptions ParseArguments(string[] args)
         {
             // Parse command line options
-            CommandOptions commandOptions = new CommandOptions();
-            ParserResult<CommandOptions> results = Parser.Default.ParseArguments<CommandOptions>(args);
+            Parser parser = new Parser((ParserSettings parserSettings) =>
+            {
+                parserSettings.AutoHelp = false;
+            });
+            ParserResult<CommandOptions> parserResult = parser.ParseArguments<CommandOptions>(args);
 
             // Map results after parsing
-            results.MapResult<CommandOptions, object>((CommandOptions opts) => commandOptions = opts, (errs) => 1);
+            CommandOptions commandOptions = new CommandOptions();
+            parserResult.MapResult<CommandOptions, object>((CommandOptions opts) => commandOptions = opts, (errs) => 1);
 
             // Return null if not able to parse
-            if (results.Tag == ParserResultType.NotParsed) { return null; }
+            if (parserResult.Tag == ParserResultType.NotParsed) 
+            {
+                HelpText helpText = HelpText.AutoBuild(parserResult);
+                helpText.AddEnumValuesToHelpText = true;
+                helpText.AddOptions(parserResult);
+                System.Console.WriteLine(helpText);
+                return null; 
+            }
 
             // Return list of parsed commands
             return commandOptions;
