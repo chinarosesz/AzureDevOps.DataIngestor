@@ -3,15 +3,12 @@ using AzureDevOpsDataCollector.Core.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
 {
-    public class RepositoryCollector : CollectorBase
+    public class RepositoryCollector
     {
         private readonly VssClient vssClientConnector;
         private readonly VssDbContext dbContext;
@@ -33,7 +30,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             // Get repos
             foreach (TeamProjectReference project in this.projects)
             {
-                this.DisplayProjectHeader(project.Name);
+                CollectorHelper.DisplayProjectHeader(this, project.Name);
                 List<GitRepository> repos = await this.vssClientConnector.GitClient.GetReposAsync(project.Name);
                 await this.InsertOrUpdateRepositories(repos);
             }
@@ -42,10 +39,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         private async Task InsertOrUpdateRepositories(List<GitRepository> repositories)
         {
             List<VssRepositoryEntity> repoEntities = new List<VssRepositoryEntity>();
-            JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings();
-            jsonSerializerSettings.Converters.Add(new StringEnumConverter());
-            jsonSerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-
+            
             foreach (GitRepository repo in repositories)
             {
                 VssRepositoryEntity repoEntity = new VssRepositoryEntity
@@ -57,7 +51,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     ProjectId = repo.ProjectReference.Id,
                     ProjectName = repo.ProjectReference.Name,
                     WebUrl = repo.RemoteUrl,
-                    Data = JsonConvert.SerializeObject(repo, jsonSerializerSettings),
+                    Data = CollectorHelper.SerializeObject(repo),
                 };
                 repoEntities.Add(repoEntity);
             }

@@ -2,25 +2,20 @@
 using AzureDevOpsDataCollector.Core.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.TeamFoundation.Core.WebApi;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
 {
-    public class ProjectCollector : CollectorBase
+    public class ProjectCollector
     {
         private readonly VssClient vssClientConnector;
         private readonly VssDbContext dbContext;
-        private readonly IEnumerable<string> projectNames;
 
-        public ProjectCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames)
+        public ProjectCollector(VssClient vssClient, VssDbContext dbContext)
         {
             this.vssClientConnector = vssClient;
             this.dbContext = dbContext;
-            this.projectNames = projectNames;
         }
 
         public async Task RunAsync()
@@ -35,10 +30,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         private async Task InsertOrUpdateProjects(List<TeamProjectReference> projects)
         {
             List<VssProjectEntity> entities = new List<VssProjectEntity>();
-            JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings();
-            jsonSerializerSettings.Converters.Add(new StringEnumConverter());
-            jsonSerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-
+            
             foreach (TeamProjectReference project in projects)
             {
                 VssProjectEntity entity = new VssProjectEntity
@@ -51,7 +43,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     State = project.State.ToString(),
                     Visibility = project.Visibility.ToString(),
                     Url = project.Url,
-                    Data = JsonConvert.SerializeObject(project, jsonSerializerSettings),
+                    Data = CollectorHelper.SerializeObject(project),
                 };
                 entities.Add(entity);
             }

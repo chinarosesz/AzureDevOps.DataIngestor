@@ -18,7 +18,7 @@ namespace AzureDevOpsDataCollector.Core
         {
             get
             {
-                string timeStamp = DateTime.Now.ToString("u");
+                string timeStamp = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
                 return timeStamp;
             }
         }
