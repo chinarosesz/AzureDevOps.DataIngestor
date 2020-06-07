@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
 {
-    public class ProjectCollector
+    public class ProjectCollector : CollectorBase
     {
         private readonly VssClient vssClientConnector;
         private readonly VssDbContext dbContext;
@@ -18,7 +18,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             this.dbContext = dbContext;
         }
 
-        public async Task RunAsync()
+        public override async Task RunAsync()
         {
             // Get projects from Azure DevOps
             List<TeamProjectReference> projects = await this.vssClientConnector.ProjectClient.GetProjectsAsync();

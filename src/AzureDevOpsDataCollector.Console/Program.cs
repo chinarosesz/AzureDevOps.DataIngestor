@@ -13,55 +13,47 @@ namespace AzureDevOpsDataCollector.Console
         public static async Task<int> Main(string[] args)
         {
             // Parse command line
-            CommandOptions parsedOptions = Program.ParseArguments(args);
+            CommandOptionsBase parsedOptions = Program.ParseArguments(args);
             if (parsedOptions == null) { return -1; }
 
             // Create DbContext client
             VssDbContext dbContext = new VssDbContext();
             await MigrateDatabaseToLatestVersion.ExecuteAsync(dbContext);
 
-            // Collect Project
-            if (parsedOptions.ProjectCommandOptions != null)
+            // Create AzureDevOps client
+            string account = parsedOptions.Account;
+            string personalAccessToken = parsedOptions.PersonalAccessToken;
+            VssClient vssClient = new VssClient(account, personalAccessToken);
+
+            // Getting ready to run each collector based on command options provided from CLI
+            CollectorBase collector = null;
+            if (parsedOptions is ProjectCommandOptions)
             {
-                string account = parsedOptions.ProjectCommandOptions.Account;
-                string personalAccessToken = parsedOptions.ProjectCommandOptions.PersonalAccessToken;
-
-                // Create AzureDevOps client
-                VssClient vssClient = new VssClient(account, personalAccessToken);
-
-                // Run
-                ProjectCollector collector = new ProjectCollector(vssClient, dbContext);
-                await collector.RunAsync();
+                collector = new ProjectCollector(vssClient, dbContext);
             }
-            // Collect Repository
-            else if (parsedOptions.RepositoryCommandOptions != null)
+            else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
             {
-                string account = parsedOptions.RepositoryCommandOptions.Account;
-                string personalAccessToken = parsedOptions.RepositoryCommandOptions.PersonalAccessToken;
-                IEnumerable<string> projects = parsedOptions.RepositoryCommandOptions.Projects;
-
-                // Create AzureDevOps client
-                VssClient vssClientConnector = new VssClient(account, personalAccessToken);
-
-                // Run
-                RepositoryCollector repositoryCollector = new RepositoryCollector(vssClientConnector, dbContext, projects);
-                await repositoryCollector.RunAsync();
+                IEnumerable<string> projects = repositoryCommandOptions.Projects;
+                collector = new RepositoryCollector(vssClient, dbContext, projects);
             }
+
+            // Finally run selected collector!
+            await collector.RunAsync();
 
             // Returns zero on success
             return 0;
         }
 
-        private static CommandOptions ParseArguments(string[] args)
+        private static CommandOptionsBase ParseArguments(string[] args)
         {
             // Parse command line options
             ParserResult<object> parserResult = Parser.Default.ParseArguments<ProjectCommandOptions, RepositoryCommandOptions>(args);
 
             // Map results after parsing
-            CommandOptions commandOptions = new CommandOptions();
+            CommandOptionsBase commandOptions = null;
             parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, object>(
-                (ProjectCommandOptions opts) => commandOptions.ProjectCommandOptions = opts,
-                (RepositoryCommandOptions opts) => commandOptions.RepositoryCommandOptions = opts,
+                (ProjectCommandOptions opts) => commandOptions = opts,
+                (RepositoryCommandOptions opts) => commandOptions = opts,
                 (errs) => 1);
 
             // Return null if not able to parse

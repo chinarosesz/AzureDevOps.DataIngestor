@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
 {
-    public class RepositoryCollector
+    public class RepositoryCollector : CollectorBase
     {
         private readonly VssClient vssClientConnector;
         private readonly VssDbContext dbContext;
@@ -22,7 +22,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             this.projectNames = projectNames;
         }
 
-        public async Task RunAsync()
+        public override async Task RunAsync()
         {
             // Get projects
             this.projects = await this.vssClientConnector.ProjectClient.GetProjectNamesAsync(this.projectNames);
