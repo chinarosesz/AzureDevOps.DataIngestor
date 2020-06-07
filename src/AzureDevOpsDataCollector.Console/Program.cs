@@ -13,7 +13,7 @@ namespace AzureDevOpsDataCollector.Console
         public static async Task<int> Main(string[] args)
         {
             // Parse command line
-            CommandOptionsBase parsedOptions = Program.ParseArguments(args);
+            CommandOptions parsedOptions = Program.ParseArguments(args);
             if (parsedOptions == null) { return -1; }
 
             // Create DbContext client
@@ -44,13 +44,13 @@ namespace AzureDevOpsDataCollector.Console
             return 0;
         }
 
-        private static CommandOptionsBase ParseArguments(string[] args)
+        private static CommandOptions ParseArguments(string[] args)
         {
             // Parse command line options
             ParserResult<object> parserResult = Parser.Default.ParseArguments<ProjectCommandOptions, RepositoryCommandOptions>(args);
 
             // Map results after parsing
-            CommandOptionsBase commandOptions = null;
+            CommandOptions commandOptions = null;
             parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, object>(
                 (ProjectCommandOptions opts) => commandOptions = opts,
                 (RepositoryCommandOptions opts) => commandOptions = opts,
