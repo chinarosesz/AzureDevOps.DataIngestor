@@ -1,8 +1,10 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients.AzureDevOps;
+using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
+using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
@@ -50,7 +52,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         }
 
         /// <summary>
-        /// Init Devops clients with either a personal access token (basic auth) or pass in authentication result with an access token (bearer)
+        /// Init Devops clients with either a personal access token (basic auth)
         /// </summary>
         private void ConnectWithBasicToken(string personalAccessToken)
         {
@@ -67,7 +69,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         }
 
         /// <summary>
-        /// Init Devops clients with either a personal access token (basic auth) or pass in authentication result with an access token (bearer)
+        /// Init Devops clients with an access token (bearer)
         /// </summary>
         private void ConnectWithBearerToken(string bearerToken)
         {

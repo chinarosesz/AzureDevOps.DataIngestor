@@ -1,4 +1,5 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
+using AzureDevOpsDataCollector.Core.Clients.AzureDevOps;
 using AzureDevOpsDataCollector.Core.Collectors;
 using CommandLine;
 using CommandLine.Text;
@@ -21,9 +22,18 @@ namespace AzureDevOpsDataCollector.Console
             await MigrateDatabaseToLatestVersion.ExecuteAsync(dbContext);
 
             // Create AzureDevOps client
-            string account = parsedOptions.Account;
-            string personalAccessToken = parsedOptions.PersonalAccessToken;
-            VssClient vssClient = new VssClient(account, personalAccessToken);
+            VssClient vssClient;
+            if (!string.IsNullOrEmpty(parsedOptions.PersonalAccessToken))
+            {
+                // Connect using personal access token
+                vssClient = new VssClient(parsedOptions.Account, parsedOptions.PersonalAccessToken, VssTokenType.Basic);
+            }
+            else
+            {
+                // Connect using current signed in domain joined user
+                string bearerToken = await VssClientHelper.GetAzureDevOpsBearerTokenForCurrentUserAsync();
+                vssClient = new VssClient(parsedOptions.Account, bearerToken, VssTokenType.Bearer);
+            }
 
             // Getting ready to run each collector based on command options provided from CLI
             CollectorBase collector = null;
