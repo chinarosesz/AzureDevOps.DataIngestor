@@ -10,9 +10,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2FB2CA53-9909-40B1-B847-2DCB8CF04ED4}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		..\.gitignore = ..\.gitignore
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.AzureDevOpsDataCollector.Core", "Test.AzureDevOpsDataCollector.Core\Test.AzureDevOpsDataCollector.Core.csproj", "{53F3DCB8-0639-49E7-B03D-AF1678DDC211}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.AzureDevOpsDataCollector.Core", "Test.AzureDevOpsDataCollector.Core\Test.AzureDevOpsDataCollector.Core.csproj", "{53F3DCB8-0639-49E7-B03D-AF1678DDC211}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
