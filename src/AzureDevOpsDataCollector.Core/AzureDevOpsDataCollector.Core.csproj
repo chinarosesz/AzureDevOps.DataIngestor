@@ -2,6 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+	  <Description>Azure DevOps data collector and inserts it directly to SQL Server. Collects data such as repositories, builds, commits, pull requests, and more</Description>
+	  <IsPackable>true</IsPackable>
+	  <PackageId>AzureDevOpsDataCollector.Core</PackageId>
+	  <Version>1.0.0</Version>
+	  <Authors>Lila Tran</Authors>
+	  <Company>https://github.com/chinarosesz/AzureDevOpsTokenGenerator</Company>
+	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <RepositoryUrl>https://github.com/chinarosesz/AzureDevOpsTokenGenerator</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
