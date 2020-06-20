@@ -5,7 +5,7 @@
 	  <Description>Azure DevOps data collector and inserts it directly to SQL Server. Collects data such as repositories, builds, commits, pull requests, and more. Visit https://github.com/chinarosesz/AzureDevOpsDataCollector for more details on how to use the API</Description>
 	  <IsPackable>true</IsPackable>
 	  <PackageId>AzureDevOpsDataCollector.Core</PackageId>
-	  <Version>1.0.0</Version>
+	  <Version>1.1.0</Version>
 	  <Authors>Lila Tran</Authors>
 	  <Company>https://github.com/chinarosesz/AzureDevOpsDataCollector</Company>
 	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
