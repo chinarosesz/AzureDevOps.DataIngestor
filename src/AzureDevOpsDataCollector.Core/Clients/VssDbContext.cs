@@ -1,4 +1,5 @@
 ﻿using AzureDevOpsDataCollector.Core.Entities;
+using EFCore.AutomaticMigrations;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         public VssDbContext(string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOpsCollector") : base()
         {
             this.connectionString = connectionString;
+            MigrateDatabaseToLatestVersion.ExecuteAsync(this).Wait();
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

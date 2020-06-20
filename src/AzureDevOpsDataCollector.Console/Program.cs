@@ -3,7 +3,6 @@ using AzureDevOpsDataCollector.Core.Clients.AzureDevOps;
 using AzureDevOpsDataCollector.Core.Collectors;
 using CommandLine;
 using CommandLine.Text;
-using EFCore.AutomaticMigrations;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -19,7 +18,6 @@ namespace AzureDevOpsDataCollector.Console
 
             // Create DbContext client
             VssDbContext dbContext = new VssDbContext();
-            await MigrateDatabaseToLatestVersion.ExecuteAsync(dbContext);
 
             // Create AzureDevOps client
             VssClient vssClient;
