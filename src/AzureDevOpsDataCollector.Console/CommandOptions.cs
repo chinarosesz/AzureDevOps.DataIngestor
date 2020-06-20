@@ -20,6 +20,9 @@ namespace AzureDevOpsDataCollector.Console
 
         [Option("pat", HelpText = "Azure DevOps Personal Access Token")]
         public string PersonalAccessToken { get; set; }
+
+        [Option("connection", HelpText = "SQL Server database connection string. If not specfied, data will be in local database")]
+        public string SqlServerConnectionString { get; set; }
     }
 
     public class ProjectCommandOptionsBase : CommandOptions

@@ -8,14 +8,21 @@ namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssDbContext : DbContext
     {
+        private readonly string connectionString;
+
         public DbSet<VssRepositoryEntity> VssRepositoryEntities { get; set; }
         public DbSet<VssProjectEntity> VssProjectEntities { get; set; }
+
+        public VssDbContext(string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOpsCollector") : base()
+        {
+            this.connectionString = connectionString;
+        }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOpsCollector");
+                optionsBuilder.UseSqlServer(this.connectionString);
             }
         }
 
