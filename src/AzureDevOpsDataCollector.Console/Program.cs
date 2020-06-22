@@ -3,6 +3,8 @@ using AzureDevOpsDataCollector.Core.Clients.AzureDevOps;
 using AzureDevOpsDataCollector.Core.Collectors;
 using CommandLine;
 using CommandLine.Text;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -16,21 +18,32 @@ namespace AzureDevOpsDataCollector.Console
             CommandOptions parsedOptions = Program.ParseArguments(args);
             if (parsedOptions == null) { return -1; }
 
+            // Redirect ILogger to Console
+            ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddConsole((ConsoleLoggerOptions options) =>
+                {
+                    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss: ";
+                    options.Format = ConsoleLoggerFormat.Systemd;
+                });
+            });
+            ILogger logger = loggerFactory.CreateLogger(string.Empty);
+
             // Create DbContext client
-            VssDbContext dbContext = new VssDbContext();
+            VssDbContext dbContext = new VssDbContext(logger);
 
             // Create AzureDevOps client
             VssClient vssClient;
             if (!string.IsNullOrEmpty(parsedOptions.PersonalAccessToken))
             {
                 // Connect using personal access token
-                vssClient = new VssClient(parsedOptions.Account, parsedOptions.PersonalAccessToken, VssTokenType.Basic);
+                vssClient = new VssClient(parsedOptions.Account, parsedOptions.PersonalAccessToken, VssTokenType.Basic, logger);
             }
             else
             {
                 // Connect using current signed in domain joined user
                 string bearerToken = await VssClientHelper.GetAzureDevOpsBearerTokenForCurrentUserAsync();
-                vssClient = new VssClient(parsedOptions.Account, bearerToken, VssTokenType.Bearer);
+                vssClient = new VssClient(parsedOptions.Account, bearerToken, VssTokenType.Bearer, logger);
             }
 
             // Getting ready to run each collector based on command options provided from CLI
@@ -42,7 +55,7 @@ namespace AzureDevOpsDataCollector.Console
             else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
             {
                 IEnumerable<string> projects = repositoryCommandOptions.Projects;
-                collector = new RepositoryCollector(vssClient, dbContext, projects);
+                collector = new RepositoryCollector(vssClient, dbContext, projects, logger);
             }
 
             // Finally run selected collector!

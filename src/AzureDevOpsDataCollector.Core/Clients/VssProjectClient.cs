@@ -1,7 +1,9 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Common;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
+using Newtonsoft.Json.Schema;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,32 +13,34 @@ namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssProjectClient : ProjectHttpClient
     {
-        internal VssProjectClient(Uri baseUrl, VssCredentials credentials) : base(baseUrl, credentials)
+        private readonly ILogger logger;
+
+        internal VssProjectClient(Uri baseUrl, VssCredentials credentials, ILogger logger) : base(baseUrl, credentials)
         {
+            this.logger = logger;
         }
 
         public async Task<List<TeamProjectReference>> GetProjectsAsync()
         {
-            Logger.WriteLine("Retrieving projects");
+            this.logger.LogInformation("Retrieving projects");
 
-            List<TeamProjectReference> projects = new List<TeamProjectReference>();
-
-            projects = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), async () =>
+            List<TeamProjectReference> projects = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
             {
+                List<TeamProjectReference> tempProjectsList = new List<TeamProjectReference>();
                 string continuationToken = null;
 
                 do
                 {
                     IPagedList<TeamProjectReference> currentProjects = await this.GetProjects(continuationToken: continuationToken);
                     continuationToken = currentProjects.ContinuationToken;
-                    projects.AddRange(currentProjects.ToList());
+                    tempProjectsList.AddRange(currentProjects.ToList());
                 }
                 while (!continuationToken.IsNullOrEmpty());
 
-                return projects;
+                return tempProjectsList;
             });
 
-            Logger.WriteLine($"Retrieved {projects.Count} projects");
+            this.logger.LogInformation($"Retrieved {projects.Count} projects");
 
             return projects;
         }

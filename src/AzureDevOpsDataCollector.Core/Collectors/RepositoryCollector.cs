@@ -1,6 +1,7 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using System.Collections.Generic;
@@ -14,12 +15,14 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         private readonly VssDbContext dbContext;
         private readonly IEnumerable<string> projectNames;
         private IEnumerable<TeamProjectReference> projects;
+        private readonly ILogger logger;
 
-        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames)
+        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames, ILogger logger)
         {
             this.vssClientConnector = vssClient;
             this.dbContext = dbContext;
             this.projectNames = projectNames;
+            this.logger = logger;
         }
 
         public override async Task RunAsync()
@@ -30,7 +33,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             // Get repos
             foreach (TeamProjectReference project in this.projects)
             {
-                CollectorHelper.DisplayProjectHeader(this, project.Name);
+                CollectorHelper.DisplayProjectHeader(this, project.Name, this.logger);
                 List<GitRepository> repos = await this.vssClientConnector.GitClient.GetReposAsync(project.Name);
                 await this.InsertOrUpdateRepositories(repos);
             }

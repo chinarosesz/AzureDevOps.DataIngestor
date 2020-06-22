@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using System;
@@ -21,10 +22,9 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             return data;
         }
 
-        public static void DisplayProjectHeader(object obj, string project)
+        public static void DisplayProjectHeader(object obj, string project, ILogger logger)
         {
-            Logger.WriteLine();
-            Logger.WriteLine($"{obj.GetType().Name}:Collecting data for project {project}".ToUpper());
+            logger.LogInformation($"{obj.GetType().Name}:Collecting data for project {project}".ToUpper());
         }
     }
 }

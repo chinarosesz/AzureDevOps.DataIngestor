@@ -1,19 +1,19 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients.AzureDevOps;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
-using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
     public class VssClient 
     {
         private VssGitClient gitClient;
+        private readonly ILogger logger;
 
         public string OrganizationName { get; private set; }
-
+        
         public VssConnection VssConnection { get; private set; }
 
         public VssGitClient GitClient
@@ -22,7 +22,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             {
                 if (this.gitClient == null)
                 {
-                    this.gitClient = new VssGitClient(this.VssConnection.Uri, this.VssConnection.Credentials);
+                    this.gitClient = new VssGitClient(this.VssConnection.Uri, this.VssConnection.Credentials, logger);
                 }
                 return this.gitClient;
             }
@@ -32,14 +32,15 @@ namespace AzureDevOpsDataCollector.Core.Clients
         {
             get
             {
-                VssProjectClient client = new VssProjectClient(this.VssConnection.Uri, this.VssConnection.Credentials);
+                VssProjectClient client = new VssProjectClient(this.VssConnection.Uri, this.VssConnection.Credentials, this.logger);
                 return client;
             }
         }
 
-        public VssClient(string organization, string token, VssTokenType tokenType = VssTokenType.Basic)
+        public VssClient(string organization, string token, VssTokenType tokenType, ILogger logger)
         {
             this.OrganizationName = organization;
+            this.logger = logger;
 
             if (tokenType == VssTokenType.Basic)
             {
@@ -59,7 +60,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             Uri collectionUri = new Uri($"https://dev.azure.com/{this.OrganizationName}");
 
             // Connect
-            Logger.WriteLine($"Connect to {collectionUri}");
+            this.logger.LogInformation($"Connect to {collectionUri}");
             VssBasicCredential basicCredential = new VssBasicCredential(string.Empty, personalAccessToken);
             VssCredentials vssCredentials = basicCredential;
             this.VssConnection = new VssConnection(collectionUri, vssCredentials);
