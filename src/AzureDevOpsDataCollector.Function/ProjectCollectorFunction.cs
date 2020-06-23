@@ -1,4 +1,3 @@
-using AzureDevOpsDataCollector.Core;
 using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Clients.AzureDevOps;
 using AzureDevOpsDataCollector.Core.Collectors;
@@ -22,21 +21,23 @@ namespace AzureDevOpsCollector.Function
         /// Run everyday at 00:00
         /// </summary>
         [FunctionName("MicrosoftProject")]
-        public static async Task MicrosoftProject([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger log)
+        public static async Task MicrosoftProject([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger logger)
         {
-            await ProjectCollectorFunction.CollectProjectData("microsoft", log);
+            await ProjectCollectorFunction.CollectProjectData("microsoft", logger);
         }
 
-        private static async Task CollectProjectData(string organizationName, ILogger log)
+        private static async Task CollectProjectData(string organizationName, ILogger logger)
         {
-            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-            
-            VssDbContext dbContext = new VssDbContext(log);
+            // Create Sql database context
+            string sqlConnectionString = Environment.GetEnvironmentVariable("SqlConnectionString");
+            VssDbContext dbContext = new VssDbContext(logger, sqlConnectionString);
 
-            string azureDevOpsPersonalAccessToken = Environment.GetEnvironmentVariable("AzureDevOpsPersonalAccessToken");
-            VssClient vssClient = new VssClient(organizationName, azureDevOpsPersonalAccessToken, VssTokenType.Basic, log);
+            // Create VssClient
+            string vssPersonalAccessToken = Environment.GetEnvironmentVariable("VssPersonalAccessToken");
+            VssClient vssClient = new VssClient(organizationName, vssPersonalAccessToken, VssTokenType.Basic, logger);
 
-            ProjectCollector projectCollector = new ProjectCollector(vssClient, dbContext);
+            // Collect data
+            ProjectCollector projectCollector = new ProjectCollector(vssClient, dbContext, logger);
             await projectCollector.RunAsync();
         }
     }

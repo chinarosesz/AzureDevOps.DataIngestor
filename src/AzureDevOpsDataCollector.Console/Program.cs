@@ -6,6 +6,7 @@ using CommandLine.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Console
@@ -30,7 +31,7 @@ namespace AzureDevOpsDataCollector.Console
             ILogger logger = loggerFactory.CreateLogger(string.Empty);
 
             // Create DbContext client
-            VssDbContext dbContext = new VssDbContext(logger);
+            VssDbContext dbContext = new VssDbContext(logger, parsedOptions.SqlServerConnectionString);
 
             // Create AzureDevOps client
             VssClient vssClient;
@@ -50,7 +51,7 @@ namespace AzureDevOpsDataCollector.Console
             CollectorBase collector = null;
             if (parsedOptions is ProjectCommandOptions)
             {
-                collector = new ProjectCollector(vssClient, dbContext);
+                collector = new ProjectCollector(vssClient, dbContext, logger);
             }
             else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
             {

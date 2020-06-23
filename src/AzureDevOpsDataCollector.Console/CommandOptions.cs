@@ -21,7 +21,7 @@ namespace AzureDevOpsDataCollector.Console
         [Option("pat", HelpText = "Azure DevOps Personal Access Token")]
         public string PersonalAccessToken { get; set; }
 
-        [Option("connection", HelpText = "SQL Server database connection string. If not specfied, data will be in local database")]
+        [Option("connection", Default = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOps", HelpText = "SQL Server database connection string. If not specfied, data will be in local database")]
         public string SqlServerConnectionString { get; set; }
     }
 

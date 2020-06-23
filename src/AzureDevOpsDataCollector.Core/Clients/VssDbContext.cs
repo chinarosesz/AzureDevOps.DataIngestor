@@ -15,28 +15,40 @@ namespace AzureDevOpsDataCollector.Core.Clients
         public DbSet<VssRepositoryEntity> VssRepositoryEntities { get; set; }
         public DbSet<VssProjectEntity> VssProjectEntities { get; set; }
 
-        public VssDbContext(ILogger logger, string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOpsCollector") : base()
+        public VssDbContext() : base() 
+        { 
+        }
+
+        public VssDbContext(ILogger logger, string connectionString) : base()
         {
-            this.connectionString = connectionString;
             this.logger = logger;
+            this.connectionString = connectionString;
+
+            this.logger.LogInformation("Migrating database");
+            this.Database.Migrate();
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            if (!optionsBuilder.IsConfigured)
+            if (!optionsBuilder.IsConfigured && this.connectionString == null)
+            {
+                optionsBuilder.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOps");
+            }
+            else if (!optionsBuilder.IsConfigured && this.connectionString != null)
             {
                 optionsBuilder.UseSqlServer(this.connectionString);
             }
-            else
-            {
-                // MigrateDatabaseToLatestVersion.ExecuteAsync(this).Wait();
-                this.Database.Migrate();
-            }
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<VssProjectEntity>();
+            modelBuilder.Entity<VssRepositoryEntity>();
         }
 
         public async Task BulkInsertOrUpdateAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
         {
-            this.logger.LogInformation($"Insert or Update {entities.Count} {typeof(T).Name} entities");
+            this.logger.LogInformation($"InsertOrUpdating {entities.Count} {typeof(T).Name} entities");
             await DbContextBulkExtensions.BulkInsertOrUpdateAsync(this, entities, bulkConfig);
         }
     }
