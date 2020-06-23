@@ -26,6 +26,15 @@ namespace AzureDevOpsCollector.Function
             await ProjectCollectorFunction.CollectProjectData("microsoft", logger);
         }
 
+        /// <summary>
+        /// Run everyday at 00:00
+        /// </summary>
+        [FunctionName("MsAzureProject")]
+        public static async Task MsAzureProject([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger logger)
+        {
+            await ProjectCollectorFunction.CollectProjectData("msazure", logger);
+        }
+
         private static async Task CollectProjectData(string organizationName, ILogger logger)
         {
             // Create Sql database context

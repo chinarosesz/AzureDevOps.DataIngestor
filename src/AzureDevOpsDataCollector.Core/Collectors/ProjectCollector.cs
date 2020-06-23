@@ -1,6 +1,5 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
-using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
@@ -52,12 +51,9 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 entities.Add(entity);
             }
 
-            this.logger.LogInformation("Getting ready for database work");
             using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
-            this.logger.LogInformation("Beginning transaction");
-            this.dbContext.BulkInsertOrUpdate(entities);
             await this.dbContext.BulkInsertOrUpdateAsync(entities);
-            transaction.Commit();
+            await transaction.CommitAsync();
         }
     }
 }
