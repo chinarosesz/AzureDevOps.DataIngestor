@@ -100,12 +100,17 @@ function CreateApplicationInsights
 
 function CreateSqlServerAndDatabase
 {
-    Write-Title "Create SQL Server and database $serviceName"
-
+    Write-Title "Create SQL Server and Database $serviceName"
+    
+    Write-Host "Creating SQL Server"
     $password = ConvertTo-SecureString $sqlPassword -AsPlainText -Force
     $creds =  New-Object -TypeName PSCredential -ArgumentList $serviceName, $password
-    
     New-AzSqlServer -Location $region -ResourceGroupName $serviceName -ServerName $serviceName -SqlAdministratorCredentials $creds
+
+    Write-Host "Creating Firewall to allow Azure services and resources to access this server"
+    New-AzSqlServerFirewallRule -ResourceGroupName $serviceName -ServerName $serviceName -AllowAllAzureIPs
+
+    Write-Host "Creating SQL Database"
     New-AzSqlDatabase -DatabaseName $serviceName -ResourceGroupName $serviceName -ServerName $serviceName
 }
 
