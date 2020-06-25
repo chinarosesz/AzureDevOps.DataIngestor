@@ -1,18 +1,17 @@
 # This script automates creation of Azure resources required to execute Azure DevOps Data Collector service
 # $serviceName: Make sure you pass in a name that exists for all resources so something unique, for example vsodatacollect1
 # Todo: Need to add name check to ensure name doesn't exist already before running script
-
+# Sample command line: .\CreateAzureResources.ps1 -subscriptionName "SubscriptionName" -serviceName "azuredevopsdatacollector" -sqlPassword "SomeReallyGoodPassword" -vssPersonalAccessToken "AzureDevOpsPersonalAccessToken"
 param
 (
-	[Parameter(Mandatory=$true)][string]$subscriptionName = "Name of subscription to create resources in",
-    [Parameter(Mandatory=$true)][string]$serviceName = "Name of data collector - for exampe: vsodataingest1",
-    [Parameter(Mandatory=$true)][string]$region = "westus2",
-    [Parameter(Mandatory=$true)][string]$sqlPassword = "Sql password to be created",
-    [Parameter(Mandatory=$true)][string]$vssPersonalAccessToken = "InsertYourPersonalAccessToken"
+	[Parameter(Mandatory=$true, HelpMessage="Azure subscription name")][string]$subscriptionName,
+    [Parameter(Mandatory=$true, HelpMessage="Name of your data collector")][string]$serviceName,
+    [Parameter(Mandatory=$true, HelpMessage="SQL Server password for the SQL account")][string]$sqlPassword,
+    [Parameter(Mandatory=$true, HelpMessage="Azure DevOps Personal Access Token used to collect data")][string]$vssPersonalAccessToken,
+    [Parameter(Mandatory=$false, HelpMessage="Region for your data collectdor to run in")][string]$region = "westus2"
 )
 
 $ErrorActionPreference = 'Stop'
-Set-Location $PSScriptRoot
 
 function Write-Title($title)
 {
@@ -32,94 +31,105 @@ function Login
     }
 }
 
+function RunChecksBeforeCreation
+{
+    Write-Title "Validating parameters"
+
+    $errorMessage = "$serviceName already exists, rerun this script and choose a different name"
+
+    Write-Host "Validate Resource Group $serviceName doesn't exist"
+    if ((Get-AzResourceGroup -Name $serviceName -ErrorAction Ignore) -ne $null)
+    {
+        throw "Resource group $errorMessage"
+    }
+
+    Write-Host "Validate Storage Account $serviceName doesn't exist"
+    if ((Get-AzStorageAccount -Name $serviceName -ResourceGroupName $serviceName -ErrorAction Ignore) -ne $null)
+    {
+        throw "Storage Account $errorMessage"
+    }
+
+    Write-Host "Validate Application Insights $serviceName doesn't exist"
+    if ((Get-AzApplicationInsights -Name $serviceName -ResourceGroupName $serviceName -ErrorAction Ignore) -ne $null)
+    {
+        throw "Appliation Insights $errorMessage"
+    }
+
+    Write-Host "Validate SQL Server $serviceName doesn't exist"
+    if ((Get-AzSqlServer -ServerName $serviceName) -ne $null)
+    {
+        throw "SQL Server $errorMessage"
+    }
+
+    Write-Host "Validate SQL Database $serviceName doesn't exist"
+    if ((Get-AzSqlDatabase -ServerName $serviceName -ResourceGroupName $serviceName -DatabaseName $serviceName -ErrorAction Ignore) -ne $null)
+    {
+        throw "SQL Database $errorMessage"
+    }
+
+    Write-Host "Validate App Service Plan $serviceName doesn't exist"
+    if ((Get-AzAppServicePlan -Name $serviceName -ResourceGroupName $serviceName -ErrorAction Ignore) -ne $null)
+    {
+        throw "App Service Plan $errorMessage"
+    }
+
+    Write-Host "Validate Function App $serviceName doesn't exist"
+    if ((Get-AzFunctionApp -Name $serviceName -ResourceGroupName $serviceName) -ne $null)
+    {
+        throw "Function App $errorMessage"
+    }
+}
+
 function CreateResourceGroup
 {
-    Write-Title "Create resource group $serviceName if it doesn't exist"
-    if ((Get-AzResourceGroup -Name $serviceName -ErrorAction SilentlyContinue) -eq $null)
-    {
-        Write-Host "Creating resource group"
-        New-AzResourceGroup -Name $serviceName -Location $region
-    }
+    Write-Title "Create Resource Group $serviceName"
+    New-AzResourceGroup -Name $serviceName -Location $region
 }
 
 function CreateStorageAccount
 {
-    Write-Title "Create storage account $serviceName if it doesn't exist"
-    if ((Get-AzStorageAccount -Name $serviceName -ResourceGroupName $serviceName -ErrorAction SilentlyContinue) -eq $null)
-    {
-        New-AzStorageAccount -ResourceGroupName $serviceName -AccountName $serviceName -Location $region -SkuName Standard_GRS
-    }
+    Write-Title "Create Storage account $serviceName"
+    New-AzStorageAccount -ResourceGroupName $serviceName -AccountName $serviceName -Location $region -SkuName Standard_GRS
 }
 
 function CreateApplicationInsights
 {
-    Write-Title "Create application insights $serviceName if it doesn't exist"
-    if ((Get-AzApplicationInsights -Name $serviceName -ResourceGroupName $serviceName -ErrorAction SilentlyContinue) -eq $null)
-    {
-        Write-Host "Creating application insights"
-        New-AzApplicationInsights -Location $region -Name $serviceName -ResourceGroupName $serviceName
-    }
+    Write-Title "Create Application Insights $serviceName"
+    New-AzApplicationInsights -Location $region -Name $serviceName -ResourceGroupName $serviceName
 }
 
-function CreateSqlServer
+function CreateSqlServerAndDatabase
 {
+    Write-Title "Create SQL Server and database $serviceName"
+
     $password = ConvertTo-SecureString $sqlPassword -AsPlainText -Force
     $creds =  New-Object -TypeName PSCredential -ArgumentList $serviceName, $password
-
-    Write-Title "Create SQL Server $serviceName if it doesn't exist"
-
-    if ((Get-AzSqlServer -ServerName $serviceName) -eq $null)
-    {
-        New-AzSqlServer -Location $region -ResourceGroupName $serviceName -ServerName $serviceName -SqlAdministratorCredentials $creds
-    }
-    if ((Get-AzSqlDatabase -ServerName $serviceName -ResourceGroupName $serviceName -DatabaseName $serviceName -ErrorAction SilentlyContinue) -eq $null)
-    {
-        New-AzSqlDatabase -DatabaseName $serviceName -ResourceGroupName $serviceName -ServerName $serviceName
-    }
+    
+    New-AzSqlServer -Location $region -ResourceGroupName $serviceName -ServerName $serviceName -SqlAdministratorCredentials $creds
+    New-AzSqlDatabase -DatabaseName $serviceName -ResourceGroupName $serviceName -ServerName $serviceName
 }
 
 function CreateAppServicePlan
 {
-    Write-Title "Create app service plan $serviceName if it doesn't exist"
-    if ((Get-AzAppServicePlan -Name $serviceName -ResourceGroupName $serviceName) -eq $null)
-    {
-        New-AzAppServicePlan -Location $region -Name $serviceName -ResourceGroupName $serviceName -Tier Basic
-    }
+    Write-Title "Create app service plan $serviceName"
+    New-AzAppServicePlan -Location $region -Name $serviceName -ResourceGroupName $serviceName -Tier Basic
 }
 
 function CreateFunctionApp
 {
-    Write-Title "Create function app $serviceName if it doesn't exist"
-
-    if ((Get-AzFunctionApp -Name $serviceName -ResourceGroupName $serviceName) -eq $null)
-    {
-        Write-Host "Creating function app"
-        New-AzFunctionApp -Name $serviceName `
-                          -PlanName $serviceName `
-                          -ResourceGroupName $serviceName `
-                          -StorageAccountName $serviceName `
-                          -FunctionsVersion 3 `
-                          -OSType Windows `
-                          -RuntimeVersion 3 `
-                          -RunTime DotNet
-    }
-
-    Write-Host "Updating function app to use application insights"
-    Update-AzFunctionApp -Name $serviceName -ResourceGroupName $serviceName -ApplicationInsightsName $serviceName -IdentityType SystemAssigned
-
-    Write-Host "Updating function app to store connection string"
+    Write-Title "Create Function App $serviceName"
     $sqlConnectionString = "Server=tcp:$serviceName.database.windows.net;Database=$serviceName;User ID=$serviceName;Password=$sqlPassword;Trusted_Connection=False;Encrypt=True;"
-    Update-AzFunctionAppSetting -AppSetting @{ "SqlConnectionString" =  $sqlConnectionString } -Name $serviceName -ResourceGroupName $serviceName
-
-    Write-Host "Updating function app to store personal access token"
-    Update-AzFunctionAppSetting -AppSetting @{ "VssPersonalAccessToken" =  $vssPersonalAccessToken } -Name $serviceName -ResourceGroupName $serviceName
+    New-AzFunctionApp -Name $serviceName -PlanName $serviceName -ResourceGroupName $serviceName -Runtime DotNet -StorageAccountName $serviceName -ApplicationInsightsName $serviceName -AppSetting @{"VssPersonalAccessToken"="$vssPersonalAccessToken"; "SqlConnectionString"="$sqlConnectionString"} -IdentityType SystemAssigned -OSType Windows -FunctionsVersion 3 -RuntimeVersion 3
 }
 
 # Main
 Login
+RunChecksBeforeCreation
 CreateResourceGroup
 CreateAppServicePlan
 CreateApplicationInsights
 CreateStorageAccount
-CreateSqlServer
+CreateSqlServerAndDatabase
 CreateFunctionApp
+
+Write-Title "Infrastructure created successfully. You can find all resources in resource group $serviceName"
