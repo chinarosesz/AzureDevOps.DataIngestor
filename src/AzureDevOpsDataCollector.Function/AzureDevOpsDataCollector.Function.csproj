@@ -4,11 +4,17 @@
     <AzureFunctionsVersion>v3</AzureFunctionsVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="ProjectCollectorFunction.cs" />
+    <Compile Remove="RepositoryCollectorFunction.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="$(LocalAppData)\AzureDevOpsCollectorService.Function\local.settings.json" Link="local.settings.json" Condition="Exists('$(LocalAppData)\AzureDevOpsCollectorService.Function\local.settings.json')">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.0.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.1.1" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.3" />
   </ItemGroup>
   <ItemGroup>

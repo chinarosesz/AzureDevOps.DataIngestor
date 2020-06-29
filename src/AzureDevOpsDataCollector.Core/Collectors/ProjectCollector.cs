@@ -25,7 +25,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             // Get projects from Azure DevOps
             List<TeamProjectReference> projects = await this.vssClient.ProjectClient.GetProjectsAsync();
 
-            // Insert or update projects
+            // Insert projects
             await this.IngestData(projects);
         }
 

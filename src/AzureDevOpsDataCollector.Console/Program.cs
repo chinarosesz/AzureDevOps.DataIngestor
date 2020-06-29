@@ -55,7 +55,7 @@ namespace AzureDevOpsDataCollector.Console
             else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
             {
                 IEnumerable<string> projects = repositoryCommandOptions.Projects;
-                collector = new RepositoryCollector(vssClient, dbContext, projects, logger);
+                collector = new RepositoryCollector(vssClient, dbContext, logger);
             }
 
             // Finally run selected collector!

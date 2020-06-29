@@ -18,7 +18,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         private IEnumerable<TeamProjectReference> projects;
         private readonly ILogger logger;
 
-        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames, ILogger logger)
+        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, ILogger logger, IEnumerable<string> projectNames = null)
         {
             this.vssClient = vssClient;
             this.dbContext = dbContext;

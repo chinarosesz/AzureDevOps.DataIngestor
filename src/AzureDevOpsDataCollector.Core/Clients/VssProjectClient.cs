@@ -3,7 +3,6 @@ using Microsoft.TeamFoundation.Common;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
-using Newtonsoft.Json.Schema;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,7 +44,10 @@ namespace AzureDevOpsDataCollector.Core.Clients
             return projects;
         }
 
-        public async Task<IEnumerable<TeamProjectReference>> GetProjectNamesAsync(IEnumerable<string> projectNames)
+        /// <summary>
+        /// If projects list is empty get all projects
+        /// </summary>
+        public async Task<IEnumerable<TeamProjectReference>> GetProjectNamesAsync(IEnumerable<string> projectNames = null)
         {
             List<TeamProjectReference> projects = new List<TeamProjectReference>();
 

@@ -15,24 +15,24 @@ namespace AzureDevOpsCollector.Function
     /// For example: POST http://localhost:7071/admin/functions/MicrosoftProject
     /// with body of {"input":""}
     /// </summary>
-    public static class ProjectCollectorFunction
+    public static class RepositoryCollectorFunction
     {
         /// <summary>
         /// Run everyday at 00:00
         /// </summary>
-        [FunctionName("MicrosoftProject")]
-        public static async Task MicrosoftProject([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger logger)
+        [FunctionName("MicrosoftRepository")]
+        public static async Task MicrosoftRepository([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger logger)
         {
-            await ProjectCollectorFunction.CollectData("microsoft", logger);
+            await RepositoryCollectorFunction.CollectData("microsoft", logger);
         }
 
         /// <summary>
         /// Run everyday at 00:00
         /// </summary>
-        [FunctionName("MsazureProject")]
-        public static async Task MsAzureProject([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger logger)
+        [FunctionName("MsazureRepository")]
+        public static async Task MsazureRepository([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger logger)
         {
-            await ProjectCollectorFunction.CollectData("msazure", logger);
+            await RepositoryCollectorFunction.CollectData("msazure", logger);
         }
 
         private static async Task CollectData(string organizationName, ILogger logger)
@@ -46,7 +46,7 @@ namespace AzureDevOpsCollector.Function
             VssClient vssClient = new VssClient(organizationName, vssPersonalAccessToken, VssTokenType.Basic, logger);
 
             // Collect data
-            var collector = new ProjectCollector(vssClient, dbContext);
+            RepositoryCollector collector = new RepositoryCollector(vssClient, dbContext, logger);
             await collector.RunAsync();
         }
     }
