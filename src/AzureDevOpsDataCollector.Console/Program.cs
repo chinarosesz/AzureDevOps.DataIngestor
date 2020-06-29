@@ -6,7 +6,6 @@ using CommandLine.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Console
@@ -51,7 +50,7 @@ namespace AzureDevOpsDataCollector.Console
             CollectorBase collector = null;
             if (parsedOptions is ProjectCommandOptions)
             {
-                collector = new ProjectCollector(vssClient, dbContext, logger);
+                collector = new ProjectCollector(vssClient, dbContext);
             }
             else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
             {

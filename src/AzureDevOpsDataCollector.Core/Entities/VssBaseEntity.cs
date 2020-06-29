@@ -4,7 +4,7 @@ namespace AzureDevOpsDataCollector.Core.Entities
 {
     public class VssBaseEntity
     {
-        public string OrganizationName { get; set; }
+        public string Organization { get; set; }
 
         public string Data { get; set; }
 

@@ -4,14 +4,16 @@ using AzureDevOpsDataCollector.Core.Clients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AzureDevOpsDataCollector.Core.Migrations
 {
     [DbContext(typeof(VssDbContext))]
-    partial class VssDbContextModelSnapshot : ModelSnapshot
+    [Migration("20200629211736_AddNewColumnExistsRepositoryTable")]
+    partial class AddNewColumnExistsRepositoryTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -28,13 +30,16 @@ namespace AzureDevOpsDataCollector.Core.Migrations
                     b.Property<string>("Data")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("Exists")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("LastUpdateTime")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Organization")
+                    b.Property<string>("OrganizationName")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<long>("Revision")
@@ -54,7 +59,7 @@ namespace AzureDevOpsDataCollector.Core.Migrations
 
                     b.HasKey("ProjectId");
 
-                    b.HasIndex("Organization")
+                    b.HasIndex("OrganizationName")
                         .HasAnnotation("SqlServer:Clustered", false);
 
                     b.ToTable("VssProject");
@@ -72,16 +77,19 @@ namespace AzureDevOpsDataCollector.Core.Migrations
                     b.Property<string>("DefaultBranch")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool>("Exists")
+                        .HasColumnType("bit");
 
-                    b.Property<string>("Organization")
+                    b.Property<string>("OrganizationName")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ProjectName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RepoName")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("RowUpdatedDate")
@@ -92,7 +100,7 @@ namespace AzureDevOpsDataCollector.Core.Migrations
 
                     b.HasKey("RepoId");
 
-                    b.HasIndex("Organization")
+                    b.HasIndex("OrganizationName")
                         .HasAnnotation("SqlServer:Clustered", false);
 
                     b.ToTable("VssRepository");

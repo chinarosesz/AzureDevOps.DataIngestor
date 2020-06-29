@@ -14,7 +14,7 @@ namespace AzureDevOpsDataCollector.Core.Entities
 
         public string ProjectName { get; set; }
 
-        public string RepoName { get; set; }
+        public string Name { get; set; }
 
         public string DefaultBranch { get; set; }
 

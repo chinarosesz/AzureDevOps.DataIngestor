@@ -42,14 +42,35 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<VssProjectEntity>();
-            modelBuilder.Entity<VssRepositoryEntity>();
+            modelBuilder.Entity<VssProjectEntity>()
+                .HasIndex(p => p.Organization).IsClustered(false);
+
+            modelBuilder.Entity<VssRepositoryEntity>()
+                .HasIndex(p => p.Organization).IsClustered(false);
         }
 
         public async Task BulkInsertOrUpdateAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
         {
             this.logger.LogInformation($"InsertOrUpdating {entities.Count} {typeof(T).Name} entities");
             await DbContextBulkExtensions.BulkInsertOrUpdateAsync(this, entities, bulkConfig);
+        }
+
+        public async Task BulkInsertOrUpdateOrDeleteAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
+        {
+            this.logger.LogInformation($"BulkInsertOrUpdateOrDelete {entities.Count} {typeof(T).Name} entities");
+            await DbContextBulkExtensions.BulkInsertOrUpdateOrDeleteAsync(this, entities, bulkConfig);
+        }
+
+        public async Task BulkInsertAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
+        {
+            this.logger.LogInformation($"BulkInsert {entities.Count} {typeof(T).Name} entities");
+            await DbContextBulkExtensions.BulkInsertAsync(this, entities, bulkConfig);
+        }
+
+        public async Task BulkDeleteAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
+        {
+            this.logger.LogInformation($"BulkDelete {entities.Count} {typeof(T).Name} entities");
+            await DbContextBulkExtensions.BulkDeleteAsync(this, entities, bulkConfig);
         }
     }
 }
