@@ -46,7 +46,7 @@ namespace AzureDevOpsCollector.Function
             VssClient vssClient = new VssClient(organizationName, vssPersonalAccessToken, VssTokenType.Basic, logger);
 
             // Collect data
-            ProjectCollector projectCollector = new ProjectCollector(vssClient, dbContext, logger);
+            ProjectCollector projectCollector = new ProjectCollector(vssClient, dbContext);
             await projectCollector.RunAsync();
         }
     }
