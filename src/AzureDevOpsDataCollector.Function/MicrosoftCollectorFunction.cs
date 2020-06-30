@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Function
 {
+    /// <summary>
+    /// This is a sample Durable Functions orchestration job demonstrating how to call into Azure DevOps Data Collector to collect project and repository data
+    /// </summary>
     public static class MicrosoftCollectorFunction
     {
         private static VssDbContext dbContext;
@@ -20,7 +23,7 @@ namespace AzureDevOpsDataCollector.Function
 
         [FunctionName(FunctionStartName)]
         public static async Task StartAsync(
-            [TimerTrigger("0 0 0 * * *")] TimerInfo info,
+            [TimerTrigger("0 0 0 * * *"), Disable()] TimerInfo info,
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
