@@ -11,55 +11,77 @@ namespace AzureDevOpsDataCollector.Function
 {
     public static class MicrosoftCollectorFunction
     {
-        [FunctionName("MicrosoftCollectorFunction_Start")]
-        public static async Task TimerTriger(
+        private static VssDbContext dbContext;
+        private static VssClient vssClient;
+        private const string FunctionStartName = "Microsoft_Start";
+        private const string FunctionOrchestrationName = "Microsoft_Orchestrator";
+        private const string FunctionRepositoryAcivityName = "Microsoft_Repository_Activity";
+        private const string FunctionProjectAcivityName = "Microsoft_Project_Activity";
+
+        [FunctionName(FunctionStartName)]
+        public static async Task StartAsync(
             [TimerTrigger("0 0 0 * * *")] TimerInfo info,
             [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
-            // Function input comes from the request content.
-            string instanceId = await starter.StartNewAsync("MicrosoftCollectorFunction_Orchestrator", null);
+            string instanceId = await starter.StartNewAsync(FunctionOrchestrationName, null);
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
         }
 
-        [FunctionName("MicrosoftCollectorFunction_Orchestrator")]
-        public static async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [FunctionName(FunctionOrchestrationName)]
+        public static async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ILogger logger)
         {
-            await context.CallActivityAsync<string>("MicrosoftProjectCollector_Activity", "microsoft");
-            await context.CallActivityAsync<string>("MicrosoftRepositoryCollector_Activity", "microsoft");
+            string organizationName = "microsoft";
+            await TryRun(context, FunctionProjectAcivityName, organizationName, logger);
+            await TryRun(context, FunctionRepositoryAcivityName, organizationName, logger);
         }
 
-        [FunctionName("MicrosoftProjectCollector_Activity")]
-        public static async Task ProjectCollector([ActivityTrigger] string organizationName, ILogger logger)
+        [FunctionName(FunctionProjectAcivityName)]
+        public static async Task RunProjectCollectorAsync([ActivityTrigger] string organizationName, ILogger logger)
         {
-            // Create Sql database context
-            string sqlConnectionString = Environment.GetEnvironmentVariable("SqlConnectionString");
-            VssDbContext dbContext = new VssDbContext(logger, sqlConnectionString);
-
-            // Create VssClient
-            string vssPersonalAccessToken = Environment.GetEnvironmentVariable("VssPersonalAccessToken");
-            VssClient vssClient = new VssClient(organizationName, vssPersonalAccessToken, VssTokenType.Basic, logger);
-
-            // Collect data
-            var collector = new ProjectCollector(vssClient, dbContext);
-            await collector.RunAsync();
+            await RunCollectorAsync(organizationName, CollectorType.Project, logger);
         }
 
-        [FunctionName("MicrosoftRepositoryCollector_Activity")]
-        public static async Task RepositoryCollector([ActivityTrigger] string organizationName, ILogger logger)
+        [FunctionName(FunctionRepositoryAcivityName)]
+        public static async Task RunRepositoryCollectorAsync([ActivityTrigger] string organizationName, ILogger logger)
+        {
+            await RunCollectorAsync(organizationName, CollectorType.Repository, logger);
+        }
+
+        private static async Task RunCollectorAsync(string organizationName, CollectorType collectorType, ILogger logger)
         {
             // Create Sql database context
             string sqlConnectionString = Environment.GetEnvironmentVariable("SqlConnectionString");
-            VssDbContext dbContext = new VssDbContext(logger, sqlConnectionString);
+            dbContext = new VssDbContext(logger, sqlConnectionString);
 
             // Create VssClient
             string vssPersonalAccessToken = Environment.GetEnvironmentVariable("VssPersonalAccessToken");
-            VssClient vssClient = new VssClient(organizationName, vssPersonalAccessToken, VssTokenType.Basic, logger);
+            vssClient = new VssClient(organizationName, vssPersonalAccessToken, VssTokenType.Basic, logger);
 
-            // Collect data
-            var collector = new RepositoryCollector(vssClient, dbContext, logger);
+            // Run collector
+            CollectorBase collector = null;
+            if (collectorType == CollectorType.Project)
+            {
+                collector = new ProjectCollector(vssClient, dbContext);
+            }
+            else if (collectorType == CollectorType.Repository)
+            {
+                collector = new RepositoryCollector(vssClient, dbContext, logger);
+            }
+
             await collector.RunAsync();
         }
 
+        private static async Task TryRun(IDurableOrchestrationContext context, string activityName, string organizationName, ILogger logger)
+        {
+            try
+            {
+                await context.CallActivityAsync(activityName, organizationName);
+            }
+            catch(Exception ex)
+            {
+                logger.LogError($"Failed to execute activity {activityName} with exception {ex}");
+            }
+        }
     }
 }
