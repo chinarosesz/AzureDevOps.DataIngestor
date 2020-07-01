@@ -45,7 +45,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     State = project.State.ToString(),
                     Visibility = project.Visibility.ToString(),
                     Url = project.Url,
-                    Data = CollectorHelper.SerializeObject(project),
+                    Data = Helper.SerializeObject(project),
                 };
                 entities.Add(entity);
             }

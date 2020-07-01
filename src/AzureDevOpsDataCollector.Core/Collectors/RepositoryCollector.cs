@@ -14,29 +14,26 @@ namespace AzureDevOpsDataCollector.Core.Collectors
     {
         private readonly VssClient vssClient;
         private readonly VssDbContext dbContext;
-        private readonly IEnumerable<string> projectNames;
-        private IEnumerable<TeamProjectReference> projects;
         private readonly ILogger logger;
 
-        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, ILogger logger, IEnumerable<string> projectNames = null)
+        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, ILogger logger)
         {
             this.vssClient = vssClient;
             this.dbContext = dbContext;
-            this.projectNames = projectNames;
             this.logger = logger;
         }
 
         public override async Task RunAsync()
         {
             // Get projects
-            this.projects = await this.vssClient.ProjectClient.GetProjectNamesAsync(this.projectNames);
+            List<TeamProjectReference> projects = await this.vssClient.ProjectClient.GetProjectsAsync();
 
             // Get repos for all projects
             List<GitRepository> repositories = new List<GitRepository>();
-            foreach (TeamProjectReference project in this.projects)
+            foreach (TeamProjectReference project in projects)
             {
-                CollectorHelper.DisplayProjectHeader(this, project.Name, this.logger);
-                List<GitRepository> reposFromProject = await this.vssClient.GitClient.GetReposAsync(project.Name);
+                Helper.DisplayProjectHeader(this, project.Name, this.logger);
+                List<GitRepository> reposFromProject = await this.vssClient.GitClient.GetRepositoriesWithRetryAsync(project.Name);
                 repositories.AddRange(reposFromProject);
             }
 
@@ -59,7 +56,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     ProjectId = repo.ProjectReference.Id,
                     ProjectName = repo.ProjectReference.Name,
                     WebUrl = repo.RemoteUrl,
-                    Data = CollectorHelper.SerializeObject(repo),
+                    Data = Helper.SerializeObject(repo),
                 };
                 entities.Add(repoEntity);
             }

@@ -19,10 +19,11 @@ namespace AzureDevOpsDataCollector.Core.Clients
             this.logger = logger;
         }
 
-        public async Task<List<TeamProjectReference>> GetProjectsAsync()
+        public async Task<List<TeamProjectReference>> GetProjectsAsync(List<string> projectNames = null)
         {
             this.logger.LogInformation("Retrieving projects");
 
+            // Retrieve all projects
             List<TeamProjectReference> projects = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
             {
                 List<TeamProjectReference> tempProjectsList = new List<TeamProjectReference>();
@@ -39,29 +40,22 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 return tempProjectsList;
             });
 
-            this.logger.LogInformation($"Retrieved {projects.Count} projects");
-
-            return projects;
-        }
-
-        /// <summary>
-        /// If projects list is empty get all projects
-        /// </summary>
-        public async Task<IEnumerable<TeamProjectReference>> GetProjectNamesAsync(IEnumerable<string> projectNames = null)
-        {
-            List<TeamProjectReference> projects = new List<TeamProjectReference>();
-
-            if (projectNames.IsNullOrEmpty())
+            // Return a list of project references if projectNames list is passed in
+            if (projectNames != null)
             {
-                projects = await this.GetProjectsAsync();
-            }
-            else
-            {
+                List<TeamProjectReference> filteredProjects = new List<TeamProjectReference>();
                 foreach (TeamProjectReference project in projects)
                 {
-                    projects.Add(project);
+                    if (projectNames.Contains(project.Name))
+                    {
+                        filteredProjects.Add(project);
+                    }
                 }
+
+                return filteredProjects;
             }
+
+            this.logger.LogInformation($"Retrieved {projects.Count} projects");
 
             return projects;
         }

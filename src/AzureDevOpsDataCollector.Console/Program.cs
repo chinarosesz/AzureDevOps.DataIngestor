@@ -6,6 +6,7 @@ using CommandLine.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Console
@@ -54,8 +55,12 @@ namespace AzureDevOpsDataCollector.Console
             }
             else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
             {
-                IEnumerable<string> projects = repositoryCommandOptions.Projects;
                 collector = new RepositoryCollector(vssClient, dbContext, logger);
+            }
+            else if (parsedOptions is PullRequestCommandOptions pullRequestCommandOptions)
+            {
+                List<string> projects = pullRequestCommandOptions.Projects.ToList();
+                collector = new PullRequestCollector(vssClient, dbContext, projects);
             }
 
             // Finally run selected collector!
@@ -68,13 +73,14 @@ namespace AzureDevOpsDataCollector.Console
         private static CommandOptions ParseArguments(string[] args)
         {
             // Parse command line options
-            ParserResult<object> parserResult = Parser.Default.ParseArguments<ProjectCommandOptions, RepositoryCommandOptions>(args);
+            ParserResult<object> parserResult = Parser.Default.ParseArguments<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions>(args);
 
             // Map results after parsing
             CommandOptions commandOptions = null;
-            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, object>(
+            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, object>(
                 (ProjectCommandOptions opts) => commandOptions = opts,
                 (RepositoryCommandOptions opts) => commandOptions = opts,
+                (PullRequestCommandOptions opts) => commandOptions = opts,
                 (errs) => 1);
 
             // Return null if not able to parse

@@ -4,9 +4,9 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using System;
 
-namespace AzureDevOpsDataCollector.Core.Collectors
+namespace AzureDevOpsDataCollector.Core
 {
-    public class CollectorHelper
+    public class Helper
     {
         public static DateTime UtcNow
         {

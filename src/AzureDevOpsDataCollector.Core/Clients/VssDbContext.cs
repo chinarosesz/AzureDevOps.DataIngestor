@@ -14,6 +14,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         public DbSet<VssRepositoryEntity> VssRepositoryEntities { get; set; }
         public DbSet<VssProjectEntity> VssProjectEntities { get; set; }
+        public DbSet<VssPullRequestEntity> VssPullRequestEntities { get; set; }
 
         public VssDbContext() : base() 
         { 
@@ -47,6 +48,9 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             modelBuilder.Entity<VssRepositoryEntity>()
                 .HasIndex(p => p.Organization).IsClustered(false);
+
+            modelBuilder.Entity<VssPullRequestEntity>()
+                .HasKey(p => new { p.PullRequestId, p.RepositoryId });
         }
 
         public async Task BulkInsertOrUpdateAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class

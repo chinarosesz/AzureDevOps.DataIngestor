@@ -9,7 +9,12 @@ namespace AzureDevOpsDataCollector.Console
     }
 
     [Verb("repository", HelpText = "Collect Azure DevOps repository data from an organization account")]
-    public class RepositoryCommandOptions : ProjectCommandOptionsBase
+    public class RepositoryCommandOptions : CommandOptions
+    {
+    }
+
+    [Verb("pullrequest", HelpText = "Collect Azure DevOps repository data from an organization account")]
+    public class PullRequestCommandOptions : ProjectCommandOptionsBase
     {
     }
 
