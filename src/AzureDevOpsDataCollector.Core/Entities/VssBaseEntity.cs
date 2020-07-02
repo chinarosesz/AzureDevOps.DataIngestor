@@ -8,6 +8,6 @@ namespace AzureDevOpsDataCollector.Core.Entities
 
         public string Data { get; set; }
 
-        public DateTime RowUpdatedDate { get; set; } = DateTime.UtcNow;
+        public DateTime RowUpdatedDate { get; set; } = Helper.UtcNow;
     }
 }

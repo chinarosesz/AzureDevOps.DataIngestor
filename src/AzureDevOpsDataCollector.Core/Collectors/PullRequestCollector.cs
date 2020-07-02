@@ -34,21 +34,34 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 List<GitRepository> repositories = await this.vssClient.GitClient.GetRepositoriesWithRetryAsync(project.Name);
                 foreach (GitRepository repo in repositories)
                 {
-                    await RetrieveAndIngestDataAsync(repo, project, PullRequestStatus.Completed);
+                    await RetrieveAndIngestPullRequestDataAsync(repo, project, PullRequestStatus.Active);
+                    await RetrieveAndIngestPullRequestDataAsync(repo, project, PullRequestStatus.Completed);
+
                 }
             }
         }
 
-        private async Task RetrieveAndIngestDataAsync(GitRepository repo, TeamProjectReference project, PullRequestStatus status)
+        private async Task RetrieveAndIngestPullRequestDataAsync(GitRepository repo, TeamProjectReference project, PullRequestStatus status)
         {
-            DateTime mostRecentDate = this.GetMostRecentDateFromDatabase(repo, status);
+            // Query for most recent date from watermark table first
+            DateTime mostRecentDate = this.GetMostRecentPullRequestDateFromWatermarkTable(repo, status);
+
+            // Retrieve pull requests from Azure DevOps
             IEnumerable<List<GitPullRequest>> pullRequestLists = this.vssClient.GitClient.GetPullRequestsWithRetry(repo, mostRecentDate, status);
 
+            // For each list ingest pull request data and update watermark table
             foreach (List<GitPullRequest> pullRequestList in pullRequestLists)
             {
+                // For each list convert to DB entities
                 List<VssPullRequestEntity> pullRequestEntities = this.ParsePullRequests(pullRequestList, project);
+
+                // Get most recent pull request from current list
+                VssPullRequestWatermarkEntity mostRecentPullRequestEntity = this.GetMostRecentPullRequestAndConvertToEntity(pullRequestList, repo, status, project);
+
+                // Insert DB pull requests entities
                 using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
                 await this.dbContext.BulkInsertOrUpdateAsync(pullRequestEntities);
+                await this.dbContext.BulkInsertOrUpdateAsync(new List<VssPullRequestWatermarkEntity>{ mostRecentPullRequestEntity });
                 await transaction.CommitAsync();
             }
         }
@@ -83,39 +96,46 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             return entities;
         }
 
-        private DateTime GetMostRecentDateFromDatabase(GitRepository repo, PullRequestStatus status)
+        private VssPullRequestWatermarkEntity GetMostRecentPullRequestAndConvertToEntity(List<GitPullRequest> gitPullRequests, GitRepository gitRepository, PullRequestStatus status, TeamProjectReference project)
         {
-            DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-6);
+            GitPullRequest mostRecentPullRequest = null;
 
-            using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
+            if (status == PullRequestStatus.Completed)
             {
-                VssPullRequestEntity mostRecentPr = null;
-
-                if (status == PullRequestStatus.Active)
-                {
-                    mostRecentPr = dbContext.VssPullRequestEntities.Where(v => v.RepositoryId == repo.Id && v.Status == status.ToString()).OrderByDescending(v => v.CreationDate).FirstOrDefault();
-
-                    if (mostRecentPr != null)
-                    {
-                        mostRecentDate = mostRecentPr.CreationDate;
-                    }
-                }
-                else if (status == PullRequestStatus.Completed || status == PullRequestStatus.Abandoned)
-                {
-                    // An abandoned pull request that becomes active may not be in this list because we are using the most recent closed date instead of created date
-                    // This is a scenario that we are ok with for now since rarely an abandoned pull request gets reactivated. To fully get an accurate number of active
-                    // pull requests, this pump has to be changed to re-pump all active pull requests from the beginning to end so we are ok with not doing that and miss
-                    // a few active ones that go from abanoned to active
-                    mostRecentPr = dbContext.VssPullRequestEntities.Where(v => v.RepositoryId == repo.Id && v.Status == status.ToString()).OrderByDescending(v => v.ClosedDate).FirstOrDefault();
-                    if (mostRecentPr != null)
-                    {
-                        mostRecentDate = mostRecentPr.ClosedDate;
-                    }
-                }
-
-                return mostRecentDate;
+                mostRecentPullRequest = gitPullRequests.Where(v => v.Status == status).OrderByDescending(v => v.ClosedDate).FirstOrDefault();
             }
+            else if (status == PullRequestStatus.Active)
+            {
+                mostRecentPullRequest = gitPullRequests.Where(v => v.Status == status).OrderByDescending(v => v.CreationDate).FirstOrDefault();
+            }
+
+            VssPullRequestWatermarkEntity vssPullRequestWatermarkEntity = new VssPullRequestWatermarkEntity
+            {
+                RowUpdatedDate = Helper.UtcNow,
+                Organization = this.vssClient.OrganizationName,
+                ProjectId = project.Id,
+                ProjectName = project.Name,
+                PullRequestStatus = status.ToString(),
+                RepositoryId = gitRepository.Id,
+                RepositoryName = gitRepository.Name,
+            };
+
+            return vssPullRequestWatermarkEntity;
         }
 
+        private DateTime GetMostRecentPullRequestDateFromWatermarkTable(GitRepository repo, PullRequestStatus status)
+        {
+            // Default by going back to 6 months if no data has been ingested for this repo
+            DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-6);
+
+            // Get latest ingested date for pull request from pull request watermark table
+            VssPullRequestWatermarkEntity latestWatermark = dbContext.VssPullRequestWatermarkEntities.Where(v => v.RepositoryId == repo.Id && v.PullRequestStatus == status.ToString()).FirstOrDefault();
+            if (latestWatermark != null)
+            {
+                mostRecentDate = latestWatermark.RowUpdatedDate;
+            }
+
+            return mostRecentDate;
+        }
     }
 }

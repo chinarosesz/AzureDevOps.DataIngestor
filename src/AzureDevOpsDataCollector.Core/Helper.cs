@@ -8,10 +8,7 @@ namespace AzureDevOpsDataCollector.Core
 {
     public class Helper
     {
-        public static DateTime UtcNow
-        {
-            get { return DateTime.UtcNow; }
-        }
+        public static DateTime UtcNow { get; } = DateTime.UtcNow;
 
         public static string SerializeObject(object obj)
         {

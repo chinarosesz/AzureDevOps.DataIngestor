@@ -4,14 +4,16 @@ using AzureDevOpsDataCollector.Core.Clients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AzureDevOpsDataCollector.Core.Migrations
 {
     [DbContext(typeof(VssDbContext))]
-    partial class VssDbContextModelSnapshot : ModelSnapshot
+    [Migration("20200702181918_UpdatePullRequestWatermarkEntity")]
+    partial class UpdatePullRequestWatermarkEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -120,10 +122,8 @@ namespace AzureDevOpsDataCollector.Core.Migrations
 
             modelBuilder.Entity("AzureDevOpsDataCollector.Core.Entities.VssPullRequestWatermarkEntity", b =>
                 {
-                    b.Property<string>("PullRequestStatus")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<Guid>("RepositoryId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Organization")
@@ -135,13 +135,16 @@ namespace AzureDevOpsDataCollector.Core.Migrations
                     b.Property<string>("ProjectName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PullRequestStatus")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("RepositoryName")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("RowUpdatedDate")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("PullRequestStatus", "RepositoryId");
+                    b.HasKey("RepositoryId");
 
                     b.ToTable("VssPullRequestWatermark");
                 });
