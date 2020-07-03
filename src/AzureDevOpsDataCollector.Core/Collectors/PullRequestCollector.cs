@@ -50,6 +50,9 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             }
 
             // Update watermark once data is successfully ingested so next time it doesn't repeat
+            // Note: If there is an issue before getting to update, data ingestion will have to run again
+            // Note: Since we are going back one month ingesting data again if watermark is unable to update
+            // Note: shouldn't be much of a problem and likely not happen too often
             await this.UpdatePullRequestWatermarkAsync(status, project);
         }
 
