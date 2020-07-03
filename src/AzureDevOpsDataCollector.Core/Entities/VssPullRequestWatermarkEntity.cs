@@ -8,10 +8,6 @@ namespace AzureDevOpsDataCollector.Core.Entities
     public class VssPullRequestWatermarkEntity
     {
         [Key]
-        public Guid RepositoryId { get; set; }
-
-        public string RepositoryName { get; set; }
-
         public Guid ProjectId { get; set; }
 
         public string ProjectName { get; set; }

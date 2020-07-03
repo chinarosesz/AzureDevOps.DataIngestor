@@ -55,7 +55,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 .HasKey(p => new { p.PullRequestId, p.RepositoryId });
 
             modelBuilder.Entity<VssPullRequestWatermarkEntity>()
-                .HasKey(p => new { p.PullRequestStatus, p.RepositoryId });
+                .HasKey(p => new { p.PullRequestStatus, p.ProjectId });
         }
 
         public async Task BulkInsertOrUpdateAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class

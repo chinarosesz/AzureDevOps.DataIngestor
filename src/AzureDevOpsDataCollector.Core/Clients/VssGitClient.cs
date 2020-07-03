@@ -56,7 +56,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         /// <summary>
         /// Query all pull requests from today until min creation date where min creation date is in the past (inclusive)
         /// </summary>
-        public IEnumerable<List<GitPullRequest>> GetPullRequestsWithRetry(GitRepository repo, DateTime minDate, PullRequestStatus status)
+        public IEnumerable<List<GitPullRequest>> GetPullRequestsWithRetry(string projectName, DateTime minDate, PullRequestStatus status)
         {
             if (minDate > Helper.UtcNow)
             {
@@ -74,7 +74,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             do
             {
-                this.logger.LogInformation($"Retrieving {status} pull requests for project {repo.ProjectReference.Name} repo {repo.Name} from {minDate} to {Helper.UtcNow}");
+                this.logger.LogInformation($"Retrieving {status} pull requests for project {projectName} from {minDate} to {Helper.UtcNow}");
 
                 // The last pull request is the where we want to check before stopping
                 if (status == PullRequestStatus.Completed && currentSetOfPullRequests.Count > 0 && currentSetOfPullRequests.Last().ClosedDate < minDate)
@@ -98,7 +98,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 {
                     try
                     {
-                        return await this.GetPullRequestsAsync(repo.Id, searchCriteria, skip: skip, top: top);
+                        return await this.GetPullRequestsByProjectAsync(projectName, searchCriteria, skip: skip, top: top);
                     }
                     catch (VssServiceException ex)
                     {

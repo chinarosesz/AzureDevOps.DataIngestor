@@ -46,13 +46,13 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 List<TeamProjectReference> filteredProjects = new List<TeamProjectReference>();
                 foreach (TeamProjectReference project in projects)
                 {
-                    if (projectNames.Contains(project.Name))
+                    if (projectNames.Contains(project.Name, StringComparer.OrdinalIgnoreCase))
                     {
                         filteredProjects.Add(project);
                     }
                 }
 
-                return filteredProjects;
+                projects = filteredProjects;
             }
 
             this.logger.LogInformation($"Retrieved {projects.Count} projects");
