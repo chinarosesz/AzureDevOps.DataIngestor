@@ -18,8 +18,8 @@ jobs:
       with:
         dotnet-version: 3.1.101
     - name: Restore
-      run: dotnet restore AzureDevOpsDataCollector.sln
+      run: dotnet restore src\AzureDevOpsDataCollector.sln
     - name: Build
-      run: dotnet build --configuration Release --no-restore AzureDevOpsDataCollector.sln
+      run: dotnet build --configuration Release --no-restore src\AzureDevOpsDataCollector.sln
     - name: Test
       run: dotnet test --no-restore --verbosity normal
