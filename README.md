@@ -1,5 +1,5 @@
 # Azure DevOps Data Collector
-Collect Azure DevOps data by calling into Azure DevOps REST API's. The following collectors are implemented:
+Collect Azure DevOps data by calling Azure DevOps SDK which calls into their REST API's. The following collectors are implemented:
 * Project
 * Repository
 * PullRequest
