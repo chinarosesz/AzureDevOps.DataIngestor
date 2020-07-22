@@ -5,3 +5,6 @@ Collect Azure DevOps data by calling Azure DevOps SDK which calls into their RES
 * PullRequest
 
 Data is collected and inserted directly into SQL Server. 
+
+# Downloads
+https://www.nuget.org/packages/AzureDevOpsDataCollector.Console
