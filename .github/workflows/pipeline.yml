@@ -27,4 +27,4 @@ jobs:
         name: AzureDevOpsDataCollector
         path: '**\bin\**\AzureDevOpsDataCollector.*'
     - name: Publish Nuget Package
-      run: dotnet nuget push src\AzureDevOpsDataCollector.Console\bin\Release\AzureDevOpsDataCollector.Console.1.2.0.nupkg -k ${{ secrets.NUGETPUSHONLYAPIKEY }} -s https://api.nuget.org/v3/index.json
+      run: dotnet nuget push src\AzureDevOpsDataCollector.Console\bin\Release\AzureDevOpsDataCollector.Console.1.2.0.nupkg -k ${{ secrets.NUGETPUSHONLYAPIKEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
