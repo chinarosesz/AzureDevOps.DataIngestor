@@ -54,6 +54,9 @@ namespace AzureDevOpsDataCollector.Core.Clients
             modelBuilder.Entity<VssPullRequestEntity>()
                 .HasKey(p => new { p.PullRequestId, p.RepositoryId });
 
+            modelBuilder.Entity<VssBuildDefinitionEntity>()
+                .HasKey(p => new { p.Id, p.ProjectId });
+
             modelBuilder.Entity<VssPullRequestWatermarkEntity>()
                 .HasKey(p => new { p.PullRequestStatus, p.ProjectId });
         }

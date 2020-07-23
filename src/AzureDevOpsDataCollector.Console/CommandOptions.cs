@@ -18,6 +18,11 @@ namespace AzureDevOpsDataCollector.Console
     {
     }
 
+    [Verb("builddefinition", HelpText = "Collect build definitions given a specific project")]
+    public class BuildDefinitionCommandOptions : CommandOptions
+    {
+    }
+
     public class CommandOptions
     {
         [Option("account", Required = true, HelpText = "The name of Azure DevOps account, for example: https://dev.azure.com/lilatran where lilatran is the account name")]

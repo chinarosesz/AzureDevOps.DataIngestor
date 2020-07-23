@@ -10,11 +10,24 @@ namespace AzureDevOpsDataCollector.Core.Clients
     public class VssClient 
     {
         private VssGitClient gitClient;
+        private VssBuildClient buildClient;
         private readonly ILogger logger;
 
         public string OrganizationName { get; private set; }
         
         public VssConnection VssConnection { get; private set; }
+
+        public VssBuildClient BuildClient
+        {
+            get
+            {
+                if (this.buildClient == null)
+                {
+                    this.buildClient = new VssBuildClient(this.VssConnection.Uri, this.VssConnection.Credentials, logger);
+                }
+                return this.buildClient;
+            }
+        }
 
         public VssGitClient GitClient
         {

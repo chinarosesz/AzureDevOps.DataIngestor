@@ -62,6 +62,10 @@ namespace AzureDevOpsDataCollector.Console
                 List<string> projects = pullRequestCommandOptions.Projects.ToList();
                 collector = new PullRequestCollector(vssClient, dbContext, projects);
             }
+            else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
+            {
+                collector = new BuildDefinitionCollector(vssClient, dbContext, logger);
+            }
 
             // Finally run selected collector!
             await collector.RunAsync();
@@ -73,14 +77,19 @@ namespace AzureDevOpsDataCollector.Console
         private static CommandOptions ParseArguments(string[] args)
         {
             // Parse command line options
-            ParserResult<object> parserResult = Parser.Default.ParseArguments<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions>(args);
+            ParserResult<object> parserResult = Parser.Default.ParseArguments<
+                ProjectCommandOptions, 
+                RepositoryCommandOptions, 
+                PullRequestCommandOptions, 
+                BuildDefinitionCommandOptions>(args);
 
             // Map results after parsing
             CommandOptions commandOptions = null;
-            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, object>(
+            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, BuildDefinitionCommandOptions, object>(
                 (ProjectCommandOptions opts) => commandOptions = opts,
                 (RepositoryCommandOptions opts) => commandOptions = opts,
                 (PullRequestCommandOptions opts) => commandOptions = opts,
+                (BuildDefinitionCommandOptions opts) => commandOptions = opts,
                 (errs) => 1);
 
             // Return null if not able to parse
