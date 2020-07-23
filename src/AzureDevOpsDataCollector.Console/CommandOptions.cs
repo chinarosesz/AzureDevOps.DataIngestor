@@ -3,17 +3,17 @@ using System.Collections.Generic;
 
 namespace AzureDevOpsDataCollector.Console
 {
-    [Verb("project", HelpText = "Collect all projects from an Azure DevOps organization account")]
+    [Verb("project", HelpText = "Collect all projects")]
     public class ProjectCommandOptions : CommandOptions
     {
     }
 
-    [Verb("repository", HelpText = "Collect Azure DevOps repository data from an organization account")]
+    [Verb("repository", HelpText = "Collect all repositories")]
     public class RepositoryCommandOptions : CommandOptions
     {
     }
 
-    [Verb("pullrequest", HelpText = "Collect Azure DevOps repository data from an organization account")]
+    [Verb("pullrequest", HelpText = "Collect pull requests data given a specific project")]
     public class PullRequestCommandOptions : ProjectCommandOptionsBase
     {
     }
@@ -32,7 +32,12 @@ namespace AzureDevOpsDataCollector.Console
 
     public class ProjectCommandOptionsBase : CommandOptions
     {
-        [Option("projects", Required = false, Default = null, Separator = ':', HelpText = "A list of project names, default is to collect all projects if not specified. For example: 'project1:project2:project3'")]
+        private const string helpText = "To collect data for all projects use '*'\r\n" +
+            "To collect data for a list of projects use ':' to separate each project name \r\n" +
+            "Example: AzureDevOpsDataCollector.Console.exe pullrequest --projects project1:project2:project3 \r\n" +
+            "Example: AzureDevOpsDataCollector.Console.exe pullrequest --projects *";
+
+        [Option("projects", Required = false, Default = null, Separator = ':', HelpText = helpText)]
         public IEnumerable<string> Projects { get; set; }
     }
 }
