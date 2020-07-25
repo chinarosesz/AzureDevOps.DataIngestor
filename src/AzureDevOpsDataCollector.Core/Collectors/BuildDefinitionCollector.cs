@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.Core.WebApi;
+using Microsoft.VisualStudio.Services.WebApi;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
@@ -31,16 +33,16 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             foreach (TeamProjectReference project in projects)
             {
                 Helper.DisplayProjectHeader(this, project.Name, this.logger);
-                List<BuildDefinitionReference> buildDefinitions = await this.vssClient.BuildClient.GetBuildDefinitionsAsync(project.Name);
-                await this.IngestData(buildDefinitions);
+                List<BuildDefinition> buildDefinitions = await this.vssClient.BuildClient.GetFullBuildDefinitionsWithRetryAsync(project.Name);
+                await this.IngestData(buildDefinitions, project);
             }
         }
 
-        private async Task IngestData(List<BuildDefinitionReference> buildDefinitionReferences)
+        private async Task IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)
         {
             List<VssBuildDefinitionEntity> entities = new List<VssBuildDefinitionEntity>();
             
-            foreach (BuildDefinitionReference buildDefinition in buildDefinitionReferences)
+            foreach (BuildDefinition buildDefinition in buildDefinitions)
             {
                 VssBuildDefinitionEntity entity = new VssBuildDefinitionEntity
                 {
@@ -50,8 +52,14 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     ProjectName = buildDefinition.Project.Name,
                     ProjectId = buildDefinition.Project.Id,
                     PoolName = buildDefinition.Queue.Pool.Name,
+                    PoolId = buildDefinition.Queue.Pool.Id,
+                    IsHosted = buildDefinition.Queue.Pool.IsHosted,
+                    QueueName = buildDefinition.Queue.Name,
+                    QueueId = buildDefinition.Queue.Id,
                     CreatedDate = buildDefinition.CreatedDate,
                     UniqueName = buildDefinition.AuthoredBy.UniqueName,
+                    Process = buildDefinition.Process.GetType().Name,
+                    WebLink = (buildDefinition.Links.Links["web"] as ReferenceLink).Href,
                     Organization = this.vssClient.OrganizationName,
                     Data = Helper.SerializeObject(buildDefinition),
                 };
@@ -59,7 +67,8 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             }
 
             using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
-            await this.dbContext.BulkInsertOrUpdateAsync(entities);
+            await this.dbContext.BulkDeleteAsync(this.dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
+            await this.dbContext.BulkInsertAsync(entities);
             await transaction.CommitAsync();
         }
     }

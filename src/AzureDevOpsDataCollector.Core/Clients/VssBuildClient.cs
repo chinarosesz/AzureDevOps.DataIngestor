@@ -39,5 +39,27 @@ namespace AzureDevOpsDataCollector.Core.Clients
             this.logger.LogInformation($"Retrieved {buildDefinitionReferences.Count} build definitions");
             return buildDefinitionReferences;
         }
+
+        public async Task<List<BuildDefinition>> GetFullBuildDefinitionsWithRetryAsync(string projectName)
+        {
+            this.logger.LogInformation($"Retrieving full build definitions for project {projectName}");
+
+            List<BuildDefinition> buildDefinitions = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
+            {
+                List<BuildDefinition> definitions = new List<BuildDefinition>();
+                IPagedList<BuildDefinition> currentDefinitions;
+                do
+                {
+                    currentDefinitions = await this.GetFullDefinitionsAsync2(project: projectName);
+                    definitions.AddRange(currentDefinitions);
+                }
+                while (!currentDefinitions.ContinuationToken.IsNullOrEmpty());
+
+                return definitions;
+            });
+
+            this.logger.LogInformation($"Retrieved {buildDefinitions.Count} build definitions");
+            return buildDefinitions;
+        }
     }
 }

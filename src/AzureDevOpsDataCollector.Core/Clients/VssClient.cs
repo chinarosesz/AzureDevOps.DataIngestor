@@ -88,6 +88,8 @@ namespace AzureDevOpsDataCollector.Core.Clients
         private void ConnectWithBearerToken(string bearerToken)
         {
             Uri collectionUri = new Uri($"https://dev.azure.com/{this.OrganizationName}");
+            this.logger.LogInformation($"Connect to {collectionUri}");
+
             VssOAuthAccessTokenCredential oAuthCredentials = new VssOAuthAccessTokenCredential(bearerToken);
             VssCredentials vssCredentials = oAuthCredentials;
             this.VssConnection = new VssConnection(collectionUri, vssCredentials);

@@ -15,7 +15,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         public DbSet<VssRepositoryEntity> VssRepositoryEntities { get; set; }
         public DbSet<VssProjectEntity> VssProjectEntities { get; set; }
         public DbSet<VssPullRequestEntity> VssPullRequestEntities { get; set; }
-        
+        public DbSet<VssBuildDefinitionEntity> VssBuildDefinitionEntities { get; set; }
         public DbSet<VssPullRequestWatermarkEntity> VssPullRequestWatermarkEntities { get; set; }
 
         public VssDbContext() : base() 

@@ -4,14 +4,16 @@ using AzureDevOpsDataCollector.Core.Clients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AzureDevOpsDataCollector.Core.Migrations
 {
     [DbContext(typeof(VssDbContext))]
-    partial class VssDbContextModelSnapshot : ModelSnapshot
+    [Migration("20200725232854_AddBuildDefinitionEntity1")]
+    partial class AddBuildDefinitionEntity1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -67,9 +69,6 @@ namespace AzureDevOpsDataCollector.Core.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UniqueName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("WebLink")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id", "ProjectId");
