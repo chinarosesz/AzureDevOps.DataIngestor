@@ -16,12 +16,12 @@ Data is collected and inserted directly into SQL Server. List of represented in 
 1. Run executable for help menu
 
 # Sample Usage
-* Collects project from Azure DevOps
-<code>AzureDevOpsDataCollector.Console.exe project --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+Collects project from Azure DevOps
+* <code>AzureDevOpsDataCollector.Console.exe project --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
 
-* Collects build definition from Azure DevOps given a list of projects to collect from
-<code>AzureDevOpsDataCollector.Console.exe builddefinition --account myaccount --projects project1:project2 --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+Collects build definition from Azure DevOps given a list of projects to collect from
+* <code>AzureDevOpsDataCollector.Console.exe builddefinition --account myaccount --projects project1:project2 --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
 
-* Collects build definition from Azure DevOps for all projects
-<code>AzureDevOpsDataCollector.Console.exe builddefinition --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+Collects build definition from Azure DevOps for all projects
+* <code>AzureDevOpsDataCollector.Console.exe builddefinition --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
 
