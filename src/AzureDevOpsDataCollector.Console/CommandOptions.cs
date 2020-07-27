@@ -19,7 +19,7 @@ namespace AzureDevOpsDataCollector.Console
     }
 
     [Verb("builddefinition", HelpText = "Collect build definitions given a specific project")]
-    public class BuildDefinitionCommandOptions : CommandOptions
+    public class BuildDefinitionCommandOptions : ProjectCommandOptionsBase
     {
     }
 

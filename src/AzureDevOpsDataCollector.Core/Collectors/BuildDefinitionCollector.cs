@@ -16,18 +16,20 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         private readonly VssClient vssClient;
         private readonly VssDbContext dbContext;
         private readonly ILogger logger;
+        private readonly List<string> projectNames;
 
-        public BuildDefinitionCollector(VssClient vssClient, VssDbContext dbContext, ILogger logger)
+        public BuildDefinitionCollector(VssClient vssClient, VssDbContext dbContext, List<string> projectNames, ILogger logger)
         {
             this.vssClient = vssClient;
             this.dbContext = dbContext;
             this.logger = logger;
+            this.projectNames = projectNames;
         }
 
         public override async Task RunAsync()
         {
             // Get projects
-            List<TeamProjectReference> projects = await this.vssClient.ProjectClient.GetProjectsAsync();
+            List<TeamProjectReference> projects = await this.vssClient.ProjectClient.GetProjectsAsync(this.projectNames);
 
             // Get build definitions for each project from Azure DevOps and ingest data into SQL Server
             foreach (TeamProjectReference project in projects)

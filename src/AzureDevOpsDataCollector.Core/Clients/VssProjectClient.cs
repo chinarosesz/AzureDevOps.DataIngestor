@@ -14,7 +14,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
     {
         private readonly ILogger logger;
 
-        internal VssProjectClient(Uri baseUrl, VssCredentials credentials, ILogger logger) : base(baseUrl, credentials)
+        internal VssProjectClient(Uri baseUrl, VssCredentials credentials, VssHttpRequestSettings settings, ILogger logger) : base(baseUrl, credentials, settings)
         {
             this.logger = logger;
         }

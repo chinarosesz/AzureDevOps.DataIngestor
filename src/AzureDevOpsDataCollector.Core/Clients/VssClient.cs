@@ -23,7 +23,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             {
                 if (this.buildClient == null)
                 {
-                    this.buildClient = new VssBuildClient(this.VssConnection.Uri, this.VssConnection.Credentials, logger);
+                    this.buildClient = new VssBuildClient(this.VssConnection.Uri, this.VssConnection.Credentials, this.VssConnection.Settings, logger);
                 }
                 return this.buildClient;
             }
@@ -45,7 +45,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         {
             get
             {
-                VssProjectClient client = new VssProjectClient(this.VssConnection.Uri, this.VssConnection.Credentials, this.logger);
+                VssProjectClient client = new VssProjectClient(this.VssConnection.Uri, this.VssConnection.Credentials, this.VssConnection.Settings, this.logger);
                 return client;
             }
         }

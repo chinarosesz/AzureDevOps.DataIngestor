@@ -64,7 +64,8 @@ namespace AzureDevOpsDataCollector.Console
             }
             else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
             {
-                collector = new BuildDefinitionCollector(vssClient, dbContext, logger);
+                List<string> projects = buildDefinitionCommandOptions.Projects.ToList();
+                collector = new BuildDefinitionCollector(vssClient, dbContext, projects, logger);
             }
 
             // Finally run selected collector!
