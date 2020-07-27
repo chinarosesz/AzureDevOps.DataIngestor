@@ -16,6 +16,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         public DbSet<VssProjectEntity> VssProjectEntities { get; set; }
         public DbSet<VssPullRequestEntity> VssPullRequestEntities { get; set; }
         public DbSet<VssBuildDefinitionEntity> VssBuildDefinitionEntities { get; set; }
+        public DbSet<VssBuildDefinitionStepEntity> VssBuildDefinitionStepEntities { get; set; }
         public DbSet<VssPullRequestWatermarkEntity> VssPullRequestWatermarkEntities { get; set; }
 
         public VssDbContext() : base() 
@@ -56,6 +57,9 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             modelBuilder.Entity<VssBuildDefinitionEntity>()
                 .HasKey(p => new { p.Id, p.ProjectId });
+
+            modelBuilder.Entity<VssBuildDefinitionStepEntity>()
+                .HasKey(p => new { p.ProjectId, p.BuildDefinitionId, p.StepNumber });
 
             modelBuilder.Entity<VssPullRequestWatermarkEntity>()
                 .HasKey(p => new { p.PullRequestStatus, p.ProjectId });
