@@ -32,7 +32,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             List<GitRepository> repositories = new List<GitRepository>();
             foreach (TeamProjectReference project in projects)
             {
-                Helper.DisplayProjectHeader(this, project.Name, this.logger);
+                this.DisplayProjectHeader(this.logger, project.Name);
                 List<GitRepository> reposFromProject = await this.vssClient.GitClient.GetRepositoriesWithRetryAsync(project.Name);
                 repositories.AddRange(reposFromProject);
             }

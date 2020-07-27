@@ -19,9 +19,6 @@ namespace AzureDevOpsDataCollector.Core
             return data;
         }
 
-        public static void DisplayProjectHeader(object obj, string project, ILogger logger)
-        {
-            logger.LogInformation($"{obj.GetType().Name}:Collecting data for project {project}".ToUpper());
-        }
+
     }
 }

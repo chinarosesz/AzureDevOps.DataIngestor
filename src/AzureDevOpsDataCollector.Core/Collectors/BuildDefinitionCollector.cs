@@ -32,16 +32,16 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             // Get build definitions for each project from Azure DevOps and ingest data into SQL Server
             foreach (TeamProjectReference project in projects)
             {
-                Helper.DisplayProjectHeader(this, project.Name, this.logger);
+                this.DisplayProjectHeader(this.logger, project.Name);
                 List<BuildDefinition> buildDefinitions = await this.vssClient.BuildClient.GetFullBuildDefinitionsWithRetryAsync(project.Name);
-                await this.IngestData(buildDefinitions, project);
+                await this.IngestData(buildDefinitions);
             }
 
             // Cleanup stale data
             await this.CleanupAsync();
         }
 
-        private async Task IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)
+        private async Task IngestData(List<BuildDefinition> buildDefinitions)
         {
             List<VssBuildDefinitionEntity> buildDefinitionEntities = new List<VssBuildDefinitionEntity>();
             List<VssBuildDefinitionStepEntity> buildDefinitionStepEntities = new List<VssBuildDefinitionStepEntity>();
@@ -56,15 +56,17 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                     Path = buildDefinition.Path,
                     ProjectName = buildDefinition.Project.Name,
                     ProjectId = buildDefinition.Project.Id,
-                    PoolName = buildDefinition.Queue.Pool.Name,
-                    PoolId = buildDefinition.Queue.Pool.Id,
-                    IsHosted = buildDefinition.Queue.Pool.IsHosted,
-                    QueueName = buildDefinition.Queue.Name,
-                    QueueId = buildDefinition.Queue.Id,
+                    PoolName = buildDefinition.Queue?.Pool?.Name,
+                    PoolId = buildDefinition.Queue?.Pool?.Id,
+                    IsHosted = buildDefinition.Queue?.Pool?.IsHosted,
+                    QueueName = buildDefinition.Queue?.Name,
+                    QueueId = buildDefinition.Queue?.Id,
                     CreatedDate = buildDefinition.CreatedDate,
                     UniqueName = buildDefinition.AuthoredBy.UniqueName,
                     Process = buildDefinition.Process.GetType().Name,
                     WebLink = (buildDefinition.Links.Links["web"] as ReferenceLink)?.Href,
+                    RepositoryName = buildDefinition.Repository?.Name,
+                    RepositoryId = buildDefinition.Repository?.Id,
                     Organization = this.vssClient.OrganizationName,
                     Data = Helper.SerializeObject(buildDefinition),
                 };
@@ -74,10 +76,10 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 if (buildDefinition.Process.GetType() == typeof(DesignerProcess))
                 {
                     DesignerProcess process = (DesignerProcess)buildDefinition.Process;
+                    int stepNumber = 1;
+
                     foreach (Phase phase in process.Phases)
                     {
-                        int stepNumber = 1;
-
                         foreach (BuildDefinitionStep buildDefinitionStep in phase.Steps)
                         {
                             VssBuildDefinitionStepEntity buildDefinitionStepEntity = new VssBuildDefinitionStepEntity
@@ -123,6 +125,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         // Clean up any stale data since this is a snapshot of data ingestion
         private async Task CleanupAsync()
         {
+            this.logger.LogInformation($"Cleaning up stale data for {this.vssClient.OrganizationName}");
             using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
             await this.dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());
             await this.dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());
