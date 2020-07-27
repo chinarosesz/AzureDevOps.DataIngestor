@@ -2,6 +2,7 @@
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -28,7 +29,8 @@ namespace AzureDevOpsDataCollector.Core.Clients
             this.logger = logger;
             this.connectionString = connectionString;
 
-            this.logger.LogInformation("Migrating database");
+            this.logger.LogInformation($"Migrate database {this.Database.GetDbConnection().Database} from server {this.Database.GetDbConnection().DataSource}");
+            this.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
             this.Database.Migrate();
         }
 
