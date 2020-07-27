@@ -3,10 +3,13 @@ Collect Azure DevOps data by calling Azure DevOps SDK which calls into their RES
 * Project
 * Repository
 * PullRequest
-* BuildDefinition
-* BuildDefinitionStep
 
-Data is collected and inserted directly into SQL Server. 
+Data is collected and inserted directly into SQL Server. List of represented in SQL tables can be found from these collectors:
+* VssProject
+* VssRepository
+* VssPullRequest
+* VssBuildDefinition
+* VssBuildDefinitionStep
 
 # Downloads
 1. Install tool from https://www.nuget.org/packages/AzureDevOpsDataCollector.Console
