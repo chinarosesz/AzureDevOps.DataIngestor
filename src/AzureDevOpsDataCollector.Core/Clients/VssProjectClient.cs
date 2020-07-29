@@ -41,7 +41,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             });
 
             // Return a list of project references if projectNames list is passed in
-            if (projectNames.Count() != 0)
+            if (projectNames != null && projectNames.Count() != 0)
             {
                 List<TeamProjectReference> filteredProjects = new List<TeamProjectReference>();
                 foreach (TeamProjectReference project in projects)

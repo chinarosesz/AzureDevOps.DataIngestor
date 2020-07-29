@@ -3,22 +3,22 @@ using System.Collections.Generic;
 
 namespace AzureDevOpsDataCollector.Console
 {
-    [Verb("project", HelpText = "Collect all projects")]
-    public class ProjectCommandOptions : CommandOptions
+    [Verb("project", HelpText = "Collect projects data given a specific project or all projects by default")]
+    public class ProjectCommandOptions : ProjectCommandOptionsBase
     {
     }
 
-    [Verb("repository", HelpText = "Collect all repositories")]
-    public class RepositoryCommandOptions : CommandOptions
+    [Verb("repository", HelpText = "Collect repository data given a specific project or all projects by default")]
+    public class RepositoryCommandOptions : ProjectCommandOptionsBase
     {
     }
 
-    [Verb("pullrequest", HelpText = "Collect pull requests data given a specific project")]
+    [Verb("pullrequest", HelpText = "Collect pull request data given a specific project or all projects by default")]
     public class PullRequestCommandOptions : ProjectCommandOptionsBase
     {
     }
 
-    [Verb("builddefinition", HelpText = "Collect build definitions given a specific project")]
+    [Verb("builddefinition", HelpText = "Collect bulid definition data given a specific project or all projects by default")]
     public class BuildDefinitionCommandOptions : ProjectCommandOptionsBase
     {
     }
