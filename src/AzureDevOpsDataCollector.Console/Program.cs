@@ -59,12 +59,12 @@ namespace AzureDevOpsDataCollector.Console
             }
             else if (parsedOptions is PullRequestCommandOptions pullRequestCommandOptions)
             {
-                List<string> projects = pullRequestCommandOptions.Projects.ToList();
+                IEnumerable<string> projects = pullRequestCommandOptions.Projects;
                 collector = new PullRequestCollector(vssClient, dbContext, projects);
             }
             else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
             {
-                List<string> projects = buildDefinitionCommandOptions.Projects.ToList();
+                IEnumerable<string> projects = buildDefinitionCommandOptions.Projects;
                 collector = new BuildDefinitionCollector(vssClient, dbContext, projects, logger);
             }
 

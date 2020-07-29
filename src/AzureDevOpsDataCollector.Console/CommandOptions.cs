@@ -37,12 +37,13 @@ namespace AzureDevOpsDataCollector.Console
 
     public class ProjectCommandOptionsBase : CommandOptions
     {
-        private const string helpText = "To collect data for all projects use '*'\r\n" +
+        private const string helpText = 
+            "By default if not specified all projects are collected\r\n" +
             "To collect data for a list of projects use ':' to separate each project name \r\n" +
             "Example: AzureDevOpsDataCollector.Console.exe pullrequest --projects project1:project2:project3 \r\n" +
-            "Example: AzureDevOpsDataCollector.Console.exe pullrequest --projects *";
+            "Example: AzureDevOpsDataCollector.Console.exe pullrequest";
 
-        [Option("projects", Required = false, Default = null, Separator = ':', HelpText = helpText)]
+        [Option("projects", Separator = ':', HelpText = helpText)]
         public IEnumerable<string> Projects { get; set; }
     }
 }

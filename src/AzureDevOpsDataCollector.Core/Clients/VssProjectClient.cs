@@ -19,7 +19,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             this.logger = logger;
         }
 
-        public async Task<List<TeamProjectReference>> GetProjectsAsync(List<string> projectNames = null)
+        public async Task<List<TeamProjectReference>> GetProjectsAsync(IEnumerable<string> projectNames = null)
         {
             this.logger.LogInformation("Retrieving projects");
 
@@ -41,7 +41,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             });
 
             // Return a list of project references if projectNames list is passed in
-            if (projectNames != null)
+            if (projectNames.Count() != 0)
             {
                 List<TeamProjectReference> filteredProjects = new List<TeamProjectReference>();
                 foreach (TeamProjectReference project in projects)

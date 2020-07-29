@@ -13,9 +13,9 @@ namespace AzureDevOpsDataCollector.Core.Collectors
     {
         private readonly VssClient vssClient;
         private readonly VssDbContext dbContext;
-        private readonly List<string> projectNames;
+        private readonly IEnumerable<string> projectNames;
 
-        public PullRequestCollector(VssClient vssClient, VssDbContext dbContext, List<string> projectNames)
+        public PullRequestCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames)
         {
             this.vssClient = vssClient;
             this.dbContext = dbContext;
