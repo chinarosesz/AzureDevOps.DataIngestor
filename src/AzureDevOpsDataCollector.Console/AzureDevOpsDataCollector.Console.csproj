@@ -7,7 +7,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>AzureDevOpsDataCollector.Console</ToolCommandName>
     <PackageId>AzureDevOpsDataCollector.Console</PackageId>
-    <Version>1.2.5</Version>
+    <Version>1.2.6</Version>
     <Authors>Lila Tran</Authors>
     <Company>https://github.com/chinarosesz/AzureDevOpsDataCollector</Company>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
