@@ -20,6 +20,50 @@ namespace AzureDevOpsDataCollector.Console
             if (parsedOptions == null) { return -1; }
 
             // Redirect ILogger to Console
+            ILogger logger = Program.RedirectLoggerToConsole();
+
+            // Create DbContext client
+            VssDbContext dbContext = new VssDbContext(logger, parsedOptions.SqlServerConnectionString);
+
+            // Create AzureDevOps client
+            VssClient vssClient = await Program.ConnectAzureDevOpsAsync(parsedOptions, logger);
+
+            // Run collector
+            await Program.RunCollectorAsync(parsedOptions, vssClient, dbContext, logger);
+
+            // Returns zero on success
+            return 0;
+        }
+
+        private static async Task RunCollectorAsync(CommandOptions parsedOptions, VssClient vssClient, VssDbContext dbContext, ILogger logger)
+        {
+            CollectorBase collector = null;
+            if (parsedOptions is ProjectCommandOptions)
+            {
+                collector = new ProjectCollector(vssClient, dbContext);
+            }
+            else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
+            {
+                IEnumerable<string> projects = repositoryCommandOptions.Projects;
+                collector = new RepositoryCollector(vssClient, dbContext, logger);
+            }
+            else if (parsedOptions is PullRequestCommandOptions pullRequestCommandOptions)
+            {
+                IEnumerable<string> projects = pullRequestCommandOptions.Projects;
+                collector = new PullRequestCollector(vssClient, dbContext, projects);
+            }
+            else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
+            {
+                IEnumerable<string> projects = buildDefinitionCommandOptions.Projects;
+                collector = new BuildDefinitionCollector(vssClient, dbContext, projects, logger);
+            }
+
+            // Finally run selected collector!
+            await collector.RunAsync();
+        }
+
+        private static ILogger RedirectLoggerToConsole()
+        {
             ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder.AddConsole((ConsoleLoggerOptions options) =>
@@ -28,12 +72,14 @@ namespace AzureDevOpsDataCollector.Console
                     options.Format = ConsoleLoggerFormat.Systemd;
                 });
             });
+
             ILogger logger = loggerFactory.CreateLogger(string.Empty);
 
-            // Create DbContext client
-            VssDbContext dbContext = new VssDbContext(logger, parsedOptions.SqlServerConnectionString);
+            return logger;
+        }
 
-            // Create AzureDevOps client
+        private static async Task<VssClient> ConnectAzureDevOpsAsync(CommandOptions parsedOptions, ILogger logger)
+        {
             VssClient vssClient;
             if (!string.IsNullOrEmpty(parsedOptions.PersonalAccessToken))
             {
@@ -52,32 +98,7 @@ namespace AzureDevOpsDataCollector.Console
                 vssClient = new VssClient(parsedOptions.Account, bearerToken, VssTokenType.Bearer, logger);
             }
 
-            // Getting ready to run each collector based on command options provided from CLI
-            CollectorBase collector = null;
-            if (parsedOptions is ProjectCommandOptions)
-            {
-                collector = new ProjectCollector(vssClient, dbContext);
-            }
-            else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
-            {
-                collector = new RepositoryCollector(vssClient, dbContext, logger);
-            }
-            else if (parsedOptions is PullRequestCommandOptions pullRequestCommandOptions)
-            {
-                IEnumerable<string> projects = pullRequestCommandOptions.Projects;
-                collector = new PullRequestCollector(vssClient, dbContext, projects);
-            }
-            else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
-            {
-                IEnumerable<string> projects = buildDefinitionCommandOptions.Projects;
-                collector = new BuildDefinitionCollector(vssClient, dbContext, projects, logger);
-            }
-
-            // Finally run selected collector!
-            await collector.RunAsync();
-
-            // Returns zero on success
-            return 0;
+            return vssClient;
         }
 
         private static CommandOptions ParseArguments(string[] args)
