@@ -28,7 +28,7 @@ namespace AzureDevOpsDataCollector.Console
         [Option("account", Required = true, HelpText = "The name of Azure DevOps account, for example: https://dev.azure.com/lilatran where lilatran is the account name")]
         public string Account { get; set; }
 
-        [Option("pat", HelpText = "Azure DevOps Personal Access Token")]
+        [Option("pat", HelpText = "Azure DevOps Personal Access Token. If not provided, will look for environment variable VssPersonalAccessToken. If not set as environment variable, will use current logged in domain user to connect as Oauth")]
         public string PersonalAccessToken { get; set; }
 
         [Option("connection", Default = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOps", HelpText = "SQL Server database connection string. If not specfied, data will be in local database")]

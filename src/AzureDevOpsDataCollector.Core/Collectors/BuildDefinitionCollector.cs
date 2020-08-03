@@ -110,7 +110,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                                 TaskDefinitionId = buildDefinitionStep.TaskDefinition.Id,
                                 TaskVersionSpec = buildDefinitionStep.TaskDefinition.VersionSpec,
                                 Condition = buildDefinitionStep.Condition,
-                                
+
                                 // Extra data context
                                 Organization = this.vssClient.OrganizationName,
                                 Data = Helper.SerializeObject(phase.Steps),

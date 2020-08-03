@@ -43,8 +43,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
         public async IAsyncEnumerable<List<BuildDefinition>> GetFullBuildDefinitionsWithRetryAsync(string projectName)
         {
-            this.logger.LogInformation($"Retrieving full build definitions for project {projectName}");
-
             IPagedList<BuildDefinition> currentDefinitions;
             string continuationToken = null;
 
@@ -52,13 +50,13 @@ namespace AzureDevOpsDataCollector.Core.Clients
             {
                 currentDefinitions = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
                 {
-                    return await this.GetFullDefinitionsAsync2(project: projectName, top: 1000, queryOrder: DefinitionQueryOrder.LastModifiedAscending, continuationToken: continuationToken);
+                    this.logger.LogInformation($"Retrieving full build definitions for project {projectName}");
+                    IPagedList<BuildDefinition> retrievedBuildDefs = await this.GetFullDefinitionsAsync2(project: projectName, top: 1000, queryOrder: DefinitionQueryOrder.LastModifiedAscending, continuationToken: continuationToken);
+                    this.logger.LogInformation($"Retrieved {retrievedBuildDefs.Count} build definitions");
+                    return retrievedBuildDefs;
                 });
 
                 continuationToken = currentDefinitions.ContinuationToken;
-
-                this.logger.LogInformation($"Retrieved {currentDefinitions.Count} build definitions");
-
                 yield return currentDefinitions.ToList();
             }
             while (continuationToken != null);

@@ -73,7 +73,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             Uri collectionUri = new Uri($"https://dev.azure.com/{this.OrganizationName}");
 
             // Connect
-            this.logger.LogInformation($"Connect to {collectionUri}");
+            this.logger.LogInformation($"Connect to {collectionUri} using supplied personal access token");
             VssBasicCredential basicCredential = new VssBasicCredential(string.Empty, personalAccessToken);
             VssCredentials vssCredentials = basicCredential;
             this.VssConnection = new VssConnection(collectionUri, vssCredentials);
@@ -88,7 +88,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         private void ConnectWithBearerToken(string bearerToken)
         {
             Uri collectionUri = new Uri($"https://dev.azure.com/{this.OrganizationName}");
-            this.logger.LogInformation($"Connect to {collectionUri}");
+            this.logger.LogInformation($"Connect to {collectionUri} using bearer token");
 
             VssOAuthAccessTokenCredential oAuthCredentials = new VssOAuthAccessTokenCredential(bearerToken);
             VssCredentials vssCredentials = oAuthCredentials;

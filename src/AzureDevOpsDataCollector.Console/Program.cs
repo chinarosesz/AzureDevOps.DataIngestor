@@ -5,8 +5,8 @@ using CommandLine;
 using CommandLine.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Console
@@ -39,6 +39,11 @@ namespace AzureDevOpsDataCollector.Console
             {
                 // Connect using personal access token
                 vssClient = new VssClient(parsedOptions.Account, parsedOptions.PersonalAccessToken, VssTokenType.Basic, logger);
+            }
+            else if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VssPersonalAccessToken")))
+            {
+                // Connect using personal access token from environment variable
+                vssClient = new VssClient(parsedOptions.Account, Environment.GetEnvironmentVariable("VssPersonalAccessToken"), VssTokenType.Basic, logger);
             }
             else
             {
