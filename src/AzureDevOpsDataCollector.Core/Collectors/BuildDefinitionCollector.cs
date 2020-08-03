@@ -1,5 +1,6 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
+using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Build.WebApi;
@@ -35,8 +36,12 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             foreach (TeamProjectReference project in projects)
             {
                 this.DisplayProjectHeader(this.logger, project.Name);
-                List<BuildDefinition> buildDefinitions = await this.vssClient.BuildClient.GetFullBuildDefinitionsWithRetryAsync(project.Name);
-                await this.IngestData(buildDefinitions);
+
+                IAsyncEnumerable<List<BuildDefinition>> buildDefinitionsList = this.vssClient.BuildClient.GetFullBuildDefinitionsWithRetryAsync(project.Name);
+                await foreach (List<BuildDefinition> buildDefinitions in buildDefinitionsList)
+                {
+                    await this.IngestData(buildDefinitions);
+                }
             }
 
             // Cleanup stale data
@@ -120,7 +125,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
 
             using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
             await this.dbContext.BulkInsertOrUpdateAsync(buildDefinitionEntities);
-            await this.dbContext.BulkInsertOrUpdateAsync(buildDefinitionStepEntities);
+            await this.dbContext.BulkInsertOrUpdateAsync(buildDefinitionStepEntities, new BulkConfig { BatchSize = 5000 });
             await transaction.CommitAsync();
         }
 

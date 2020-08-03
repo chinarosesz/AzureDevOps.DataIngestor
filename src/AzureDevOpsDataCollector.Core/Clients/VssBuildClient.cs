@@ -5,6 +5,7 @@ using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
@@ -40,26 +41,27 @@ namespace AzureDevOpsDataCollector.Core.Clients
             return buildDefinitionReferences;
         }
 
-        public async Task<List<BuildDefinition>> GetFullBuildDefinitionsWithRetryAsync(string projectName)
+        public async IAsyncEnumerable<List<BuildDefinition>> GetFullBuildDefinitionsWithRetryAsync(string projectName)
         {
             this.logger.LogInformation($"Retrieving full build definitions for project {projectName}");
 
-            List<BuildDefinition> buildDefinitions = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
+            IPagedList<BuildDefinition> currentDefinitions;
+            string continuationToken = null;
+
+            do
             {
-                List<BuildDefinition> definitions = new List<BuildDefinition>();
-                IPagedList<BuildDefinition> currentDefinitions;
-                do
+                currentDefinitions = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
                 {
-                    currentDefinitions = await this.GetFullDefinitionsAsync2(project: projectName);
-                    definitions.AddRange(currentDefinitions);
-                }
-                while (!currentDefinitions.ContinuationToken.IsNullOrEmpty());
+                    return await this.GetFullDefinitionsAsync2(project: projectName, top: 1000, queryOrder: DefinitionQueryOrder.LastModifiedAscending, continuationToken: continuationToken);
+                });
 
-                return definitions;
-            });
+                continuationToken = currentDefinitions.ContinuationToken;
 
-            this.logger.LogInformation($"Retrieved {buildDefinitions.Count} build definitions");
-            return buildDefinitions;
+                this.logger.LogInformation($"Retrieved {currentDefinitions.Count} build definitions");
+
+                yield return currentDefinitions.ToList();
+            }
+            while (continuationToken != null);
         }
     }
 }
