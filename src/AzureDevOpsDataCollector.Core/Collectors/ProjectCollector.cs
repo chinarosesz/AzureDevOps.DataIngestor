@@ -2,6 +2,7 @@
 using AzureDevOpsDataCollector.Core.Entities;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,12 +13,14 @@ namespace AzureDevOpsDataCollector.Core.Collectors
     public class ProjectCollector : CollectorBase
     {
         private readonly VssClient vssClient;
-        private readonly VssDbContext dbContext;
+        private readonly string sqlConnectionString;
+        private readonly ILogger logger;
 
-        public ProjectCollector(VssClient vssClient, VssDbContext dbContext)
+        public ProjectCollector(VssClient vssClient, string sqlConnectionString, ILogger logger)
         {
             this.vssClient = vssClient;
-            this.dbContext = dbContext;
+            this.sqlConnectionString = sqlConnectionString;
+            this.logger = logger;
         }
 
         public override async Task RunAsync()
@@ -50,9 +53,10 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 entities.Add(entity);
             }
 
-            using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
-            await this.dbContext.BulkDeleteAsync(this.dbContext.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
-            await this.dbContext.BulkInsertAsync(entities);
+            using VssDbContext vssDbContext = new VssDbContext(this.sqlConnectionString, logger);
+            using IDbContextTransaction transaction = vssDbContext.Database.BeginTransaction();
+            await vssDbContext.BulkDeleteAsync(vssDbContext.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
+            await vssDbContext.BulkInsertAsync(entities);
             await transaction.CommitAsync();
         }
     }

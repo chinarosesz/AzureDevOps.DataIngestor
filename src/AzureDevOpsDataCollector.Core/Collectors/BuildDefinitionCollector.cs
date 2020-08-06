@@ -7,6 +7,7 @@ using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.WebApi;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -18,13 +19,14 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         private readonly VssDbContext dbContext;
         private readonly ILogger logger;
         private readonly IEnumerable<string> projectNames;
+        private readonly string sqlServerConnectionString;
 
-        public BuildDefinitionCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames, ILogger logger)
+        public BuildDefinitionCollector(VssClient vssClient, string sqlServerConnectionString, IEnumerable<string> projectNames, ILogger logger)
         {
             this.vssClient = vssClient;
-            this.dbContext = dbContext;
             this.logger = logger;
             this.projectNames = projectNames;
+            this.sqlServerConnectionString = sqlServerConnectionString;
         }
 
         public override async Task RunAsync()
@@ -37,18 +39,23 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             {
                 this.DisplayProjectHeader(this.logger, project.Name);
 
+                // Get build definiitions from Azure DevOps
                 IAsyncEnumerable<List<BuildDefinition>> buildDefinitionsList = this.vssClient.BuildClient.GetFullBuildDefinitionsWithRetryAsync(project.Name);
-                await foreach (List<BuildDefinition> buildDefinitions in buildDefinitionsList)
+                List<BuildDefinition> buildDefinitions = new List<BuildDefinition>();
+                await foreach (List<BuildDefinition> currentBuildDefinitions in buildDefinitionsList)
                 {
-                    await this.IngestData(buildDefinitions);
+                    buildDefinitions.AddRange(currentBuildDefinitions);
                 }
+
+                // Ingest into database
+                await this.IngestData(buildDefinitions, project);
             }
 
             // Cleanup stale data
             await this.CleanupAsync();
         }
 
-        private async Task IngestData(List<BuildDefinition> buildDefinitions)
+        private async Task IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)
         {
             List<VssBuildDefinitionEntity> buildDefinitionEntities = new List<VssBuildDefinitionEntity>();
             List<VssBuildDefinitionStepEntity> buildDefinitionStepEntities = new List<VssBuildDefinitionStepEntity>();
@@ -123,17 +130,22 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 // todo: Need to parse yaml file here
             }
 
-            using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
-            await this.dbContext.BulkInsertOrUpdateAsync(buildDefinitionEntities);
-            await this.dbContext.BulkInsertOrUpdateAsync(buildDefinitionStepEntities, new BulkConfig { BatchSize = 5000 });
+            this.logger.LogInformation("Inserting build definitions");
+            using VssDbContext dbContext = new VssDbContext(this.sqlServerConnectionString, logger);
+            using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
+            await dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
+            await dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
+            await dbContext.BulkInsertAsync(buildDefinitionEntities);
+            await dbContext.BulkInsertAsync(buildDefinitionStepEntities);
             await transaction.CommitAsync();
+            this.logger.LogInformation($"Inserted {buildDefinitionEntities.Count} build definitions and {buildDefinitionStepEntities.Count} build definition steps");
         }
 
         // Clean up any stale data since this is a snapshot of data ingestion
         private async Task CleanupAsync()
         {
             this.logger.LogInformation($"Cleaning up stale data for {this.vssClient.OrganizationName}");
-            using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
+            using IDbContextTransaction transaction = new VssDbContext(this.sqlServerConnectionString, logger).Database.BeginTransaction();
             await this.dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());
             await this.dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());
             await transaction.CommitAsync();

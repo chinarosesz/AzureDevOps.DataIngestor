@@ -23,29 +23,29 @@ namespace AzureDevOpsDataCollector.Console
             ILogger logger = Program.RedirectLoggerToConsole();
 
             // Create DbContext client
-            VssDbContext dbContext = new VssDbContext(logger, parsedOptions.SqlServerConnectionString);
+            VssDbContext dbContext = new VssDbContext(parsedOptions.SqlServerConnectionString, logger);
 
             // Create AzureDevOps client
             VssClient vssClient = await Program.ConnectAzureDevOpsAsync(parsedOptions, logger);
 
             // Run collector
-            await Program.RunCollectorAsync(parsedOptions, vssClient, dbContext, logger);
+            await Program.RunCollectorAsync(parsedOptions, vssClient, dbContext, logger, parsedOptions.SqlServerConnectionString);
 
             // Returns zero on success
             return 0;
         }
 
-        private static async Task RunCollectorAsync(CommandOptions parsedOptions, VssClient vssClient, VssDbContext dbContext, ILogger logger)
+        private static async Task RunCollectorAsync(CommandOptions parsedOptions, VssClient vssClient, VssDbContext dbContext, ILogger logger, string sqlConnectionString)
         {
             CollectorBase collector = null;
             if (parsedOptions is ProjectCommandOptions)
             {
-                collector = new ProjectCollector(vssClient, dbContext);
+                collector = new ProjectCollector(vssClient, sqlConnectionString, logger);
             }
             else if (parsedOptions is RepositoryCommandOptions repositoryCommandOptions)
             {
                 IEnumerable<string> projects = repositoryCommandOptions.Projects;
-                collector = new RepositoryCollector(vssClient, dbContext, logger);
+                collector = new RepositoryCollector(vssClient, sqlConnectionString, projects, logger);
             }
             else if (parsedOptions is PullRequestCommandOptions pullRequestCommandOptions)
             {
@@ -55,7 +55,7 @@ namespace AzureDevOpsDataCollector.Console
             else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
             {
                 IEnumerable<string> projects = buildDefinitionCommandOptions.Projects;
-                collector = new BuildDefinitionCollector(vssClient, dbContext, projects, logger);
+                collector = new BuildDefinitionCollector(vssClient, sqlConnectionString, projects, logger);
             }
 
             // Finally run selected collector!

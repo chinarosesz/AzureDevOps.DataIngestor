@@ -13,20 +13,23 @@ namespace AzureDevOpsDataCollector.Core.Collectors
     public class RepositoryCollector : CollectorBase
     {
         private readonly VssClient vssClient;
+        private readonly string sqlConnectionString;
+        private readonly IEnumerable<string> projectNames;
         private readonly VssDbContext dbContext;
         private readonly ILogger logger;
 
-        public RepositoryCollector(VssClient vssClient, VssDbContext dbContext, ILogger logger)
+        public RepositoryCollector(VssClient vssClient, string sqlConnectionString, IEnumerable<string> projectNames, ILogger logger)
         {
             this.vssClient = vssClient;
-            this.dbContext = dbContext;
+            this.sqlConnectionString = sqlConnectionString;
+            this.projectNames = projectNames;
             this.logger = logger;
         }
 
         public override async Task RunAsync()
         {
             // Get projects
-            List<TeamProjectReference> projects = await this.vssClient.ProjectClient.GetProjectsAsync();
+            List<TeamProjectReference> projects = await this.vssClient.ProjectClient.GetProjectsAsync(this.projectNames);
 
             // Get repos for all projects
             List<GitRepository> repositories = new List<GitRepository>();
@@ -61,7 +64,8 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 entities.Add(repoEntity);
             }
 
-            using IDbContextTransaction transaction = this.dbContext.Database.BeginTransaction();
+            using VssDbContext vssDbContext = new VssDbContext(this.sqlConnectionString, logger);
+            using IDbContextTransaction transaction = vssDbContext.Database.BeginTransaction();
             await this.dbContext.BulkDeleteAsync(this.dbContext.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
             await this.dbContext.BulkInsertAsync(entities);
             await transaction.CommitAsync();

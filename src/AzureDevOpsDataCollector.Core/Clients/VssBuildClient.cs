@@ -51,7 +51,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
                 currentDefinitions = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
                 {
                     this.logger.LogInformation($"Retrieving full build definitions for project {projectName}");
-                    IPagedList<BuildDefinition> retrievedBuildDefs = await this.GetFullDefinitionsAsync2(project: projectName, top: 1000, queryOrder: DefinitionQueryOrder.LastModifiedAscending, continuationToken: continuationToken);
+                    IPagedList<BuildDefinition> retrievedBuildDefs = await this.GetFullDefinitionsAsync2(project: projectName, top: 2000, queryOrder: DefinitionQueryOrder.LastModifiedAscending, continuationToken: continuationToken);
                     this.logger.LogInformation($"Retrieved {retrievedBuildDefs.Count} build definitions");
                     return retrievedBuildDefs;
                 });

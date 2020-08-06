@@ -24,7 +24,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
         { 
         }
 
-        public VssDbContext(ILogger logger, string connectionString) : base()
+        public VssDbContext(string connectionString, ILogger logger) : base()
         {
             this.logger = logger;
             this.connectionString = connectionString;
