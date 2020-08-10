@@ -1,5 +1,6 @@
 ﻿using AzureDevOpsDataCollector.Core.Entities;
 using EFCore.BulkExtensions;
+using EntityFrameworkCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -89,6 +90,18 @@ namespace AzureDevOpsDataCollector.Core.Clients
         {
             this.logger.LogInformation($"BulkDelete {entities.Count} {typeof(T).Name} entities");
             await DbContextBulkExtensions.BulkDeleteAsync(this, entities, bulkConfig);
+        }
+
+        public void BulkInsert<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
+        {
+            this.logger.LogInformation($"BulkInsert {entities.Count} {typeof(T).Name} entities");
+            BulkExtensions.BulkInsert(this, entities);
+        }
+
+        public void BulkDelete<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
+        {
+            this.logger.LogInformation($"BulkDelete {entities.Count} {typeof(T).Name} entities");
+            BulkExtensions.BulkDelete(this, entities);
         }
     }
 }

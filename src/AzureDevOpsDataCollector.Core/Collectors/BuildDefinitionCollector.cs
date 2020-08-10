@@ -48,14 +48,14 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 }
 
                 // Ingest into database
-                await this.IngestData(buildDefinitions, project);
+                this.IngestData(buildDefinitions, project);
             }
 
             // Cleanup stale data
             await this.CleanupAsync();
         }
 
-        private async Task IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)
+        private void IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)
         {
             List<VssBuildDefinitionEntity> buildDefinitionEntities = new List<VssBuildDefinitionEntity>();
             List<VssBuildDefinitionStepEntity> buildDefinitionStepEntities = new List<VssBuildDefinitionStepEntity>();
@@ -133,11 +133,11 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             this.logger.LogInformation("Inserting build definitions");
             using VssDbContext dbContext = new VssDbContext(this.sqlServerConnectionString, logger);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
-            await dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
-            await dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
-            await dbContext.BulkInsertAsync(buildDefinitionEntities);
-            await dbContext.BulkInsertAsync(buildDefinitionStepEntities);
-            await transaction.CommitAsync();
+            dbContext.BulkDelete(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
+            dbContext.BulkDelete(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
+            dbContext.BulkInsert(buildDefinitionEntities);
+            dbContext.BulkInsert(buildDefinitionStepEntities);
+            transaction.CommitAsync();
             this.logger.LogInformation($"Inserted {buildDefinitionEntities.Count} build definitions and {buildDefinitionStepEntities.Count} build definition steps");
         }
 

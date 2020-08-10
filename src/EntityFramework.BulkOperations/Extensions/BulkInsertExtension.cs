@@ -2,6 +2,7 @@
 using System.Data.SqlClient;
 using EntityFramework.BulkExtensions.Commons.Context;
 using EntityFramework.BulkExtensions.Commons.Helpers;
+using Microsoft.Data.SqlClient;
 
 namespace EntityFramework.BulkExtensions.Commons.Extensions
 {

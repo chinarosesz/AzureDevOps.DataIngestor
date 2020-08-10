@@ -32,4 +32,8 @@
     <PackageReference Include="Polly" Version="7.2.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\EntityFramework.BulkOperations\EntityFramework.BulkOperations.csproj" />
+  </ItemGroup>
+
 </Project>

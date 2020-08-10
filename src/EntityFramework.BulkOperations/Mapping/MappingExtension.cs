@@ -16,18 +16,17 @@ namespace EntityFrameworkCore.BulkExtensions.Mapping
         /// <returns></returns>
         internal static IEntityMapping Mapping<TEntity>(this DbContext context) where TEntity : class
         {
-            var entityType = context.Model.FindEntityType(typeof(TEntity));
-            var relational = entityType.Relational();
-            var baseType = entityType.BaseType ?? entityType;
-            var hierarchy = context.Model.GetEntityTypes()
+            IEntityType entityType = context.Model.FindEntityType(typeof(TEntity));
+            IEntityType baseType = entityType.BaseType ?? entityType;
+            List<IEntityType> hierarchy = context.Model.GetEntityTypes()
                 .Where(type => type.BaseType == null ? type == baseType : type.BaseType == baseType)
                 .ToList();
-            var properties = hierarchy.GetPropertyMappings().ToList();
+            List<IPropertyMapping> properties = hierarchy.GetPropertyMappings().ToList();
 
-            var entityMapping = new EntityMapping
+            EntityMapping entityMapping = new EntityMapping
             {
-                TableName = relational.TableName,
-                Schema = relational.Schema
+                TableName = entityType.GetTableName(),
+                Schema = entityType.GetSchema(),
             };
 
             if (hierarchy.Any())
@@ -35,7 +34,7 @@ namespace EntityFrameworkCore.BulkExtensions.Mapping
                 entityMapping.HierarchyMapping = GetHierarchyMappings(hierarchy);
                 properties.Add(new PropertyMapping
                 {
-                    ColumnName = relational.DiscriminatorProperty.Name,
+                    ColumnName = entityType.GetDiscriminatorProperty().Name,
                     IsHierarchyMapping = true
                 });
             }
@@ -46,20 +45,19 @@ namespace EntityFrameworkCore.BulkExtensions.Mapping
 
         private static Dictionary<string, string> GetHierarchyMappings(IEnumerable<IEntityType> hierarchy)
         {
-            return hierarchy.ToDictionary(entityType => entityType.ClrType.Name,
-                entityType => entityType.Relational().DiscriminatorValue.ToString());
+            return hierarchy.ToDictionary(entityType => entityType.ClrType.Name, entityType => entityType.GetDiscriminatorValue() as string);
         }
 
         private static IEnumerable<IPropertyMapping> GetPropertyMappings(this IEnumerable<IEntityType> hierarchy)
         {
             return hierarchy
-                .SelectMany(type => type.GetProperties().Where(property => !property.IsShadowProperty))
+                .SelectMany(type => type.GetProperties().Where(property => !property.IsShadowProperty()))
                 .Distinct()
                 .ToList()
                 .Select(property => new PropertyMapping
                 {
                     PropertyName = property.Name,
-                    ColumnName = property.Relational().ColumnName,
+                    ColumnName = property.GetColumnName(),
                     IsPk = property.IsPrimaryKey()
                 });
         }
