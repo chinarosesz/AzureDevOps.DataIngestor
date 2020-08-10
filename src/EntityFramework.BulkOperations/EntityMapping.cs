@@ -3,13 +3,13 @@ using System.Linq;
 
 namespace EntityFramework.BulkExtensions.Commons.Mapping
 {
-    public class EntityMapping : IEntityMapping
+    public class EntityMapping
     {
         public string TableName { get; set; }
         public string Schema { get; set; }
-        public IEnumerable<IPropertyMapping> Properties { get; set; }
+        public IEnumerable<PropertyMapping> Properties { get; set; }
 
-        public IEnumerable<IPropertyMapping> Pks
+        public IEnumerable<PropertyMapping> Pks
         {
             get { return Properties.Where(propertyMapping => propertyMapping.IsPk); }
         }

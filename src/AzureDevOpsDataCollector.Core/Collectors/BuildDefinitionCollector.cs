@@ -52,7 +52,7 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             }
 
             // Cleanup stale data
-            await this.CleanupAsync();
+            // await this.CleanupAsync();
         }
 
         private void IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)

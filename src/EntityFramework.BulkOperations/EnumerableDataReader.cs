@@ -22,7 +22,7 @@ namespace Shared.Helpers
             _enumerator = _collection.GetEnumerator();
             _enumerator.Reset();
             _columnGuids = new List<Guid>();
-            foreach (var unused in _columns)
+            foreach (string unused in _columns)
             {
                 _columnGuids.Add(Guid.NewGuid());
             }
@@ -44,7 +44,7 @@ namespace Shared.Helpers
 
         public override bool NextResult()
         {
-            var moved = _enumerator.MoveNext();
+            bool moved = _enumerator.MoveNext();
             if (moved)
                 _currentElement = _enumerator.Current as object[];
             return moved;
@@ -52,7 +52,7 @@ namespace Shared.Helpers
 
         public override bool Read()
         {
-            var moved = _enumerator.MoveNext();
+            bool moved = _enumerator.MoveNext();
             if (moved)
                 _currentElement = _enumerator.Current as object[];
             return moved;
@@ -155,7 +155,7 @@ namespace Shared.Helpers
         {
             get
             {
-                var index = _columns.IndexOf(name);
+                int index = _columns.IndexOf(name);
                 return index < 0 ? null : _collection[index];
             }
         }

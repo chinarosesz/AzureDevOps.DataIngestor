@@ -1,6 +1,6 @@
 ﻿namespace EntityFramework.BulkExtensions.Commons.Mapping
 {
-    public class PropertyMapping : IPropertyMapping
+    public class PropertyMapping
     {
         public string PropertyName { get; set; }
         public string ColumnName { get; set; }

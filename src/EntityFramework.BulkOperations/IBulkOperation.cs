@@ -6,6 +6,6 @@ namespace EntityFramework.BulkExtensions.Commons.BulkOperations
 {
     internal interface IBulkOperation
     {
-        int CommitTransaction<TEntity>(IDbContextWrapper context, IEnumerable<TEntity> collection, BulkOptions options = BulkOptions.Default) where TEntity : class;
+        int CommitTransaction<TEntity>(DbContextWrapper context, IEnumerable<TEntity> collection, BulkOptions options = BulkOptions.Default) where TEntity : class;
     }
 }
