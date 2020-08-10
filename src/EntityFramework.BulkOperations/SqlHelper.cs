@@ -27,7 +27,7 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
                 bulkcopy.ColumnMappings.Add(column.ColumnName, column.ColumnName);
             }
             bulkcopy.DestinationTableName = tableName;
-            bulkcopy.BulkCopyTimeout = context.Connection.ConnectionTimeout;
+            bulkcopy.BulkCopyTimeout = 1000;
             bulkcopy.WriteToServer(dataReader);
         }
 
