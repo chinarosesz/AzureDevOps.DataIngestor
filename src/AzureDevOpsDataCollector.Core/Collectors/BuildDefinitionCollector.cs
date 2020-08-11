@@ -1,6 +1,5 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
-using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Build.WebApi;
@@ -16,7 +15,6 @@ namespace AzureDevOpsDataCollector.Core.Collectors
     public class BuildDefinitionCollector : CollectorBase
     {
         private readonly VssClient vssClient;
-        private readonly VssDbContext dbContext;
         private readonly ILogger logger;
         private readonly IEnumerable<string> projectNames;
         private readonly string sqlServerConnectionString;
@@ -40,19 +38,14 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 this.DisplayProjectHeader(this.logger, project.Name);
 
                 // Get build definiitions from Azure DevOps
-                IAsyncEnumerable<List<BuildDefinition>> buildDefinitionsList = this.vssClient.BuildClient.GetFullBuildDefinitionsWithRetryAsync(project.Name);
+                IAsyncEnumerable<List<BuildDefinition>> definitionsLists = this.vssClient.BuildClient.GetFullBuildDefinitionsWithRetryAsync(project.Name);
                 List<BuildDefinition> buildDefinitions = new List<BuildDefinition>();
-                await foreach (List<BuildDefinition> currentBuildDefinitions in buildDefinitionsList)
+                await foreach (List<BuildDefinition> definitionList in definitionsLists)
                 {
-                    buildDefinitions.AddRange(currentBuildDefinitions);
+                    buildDefinitions.AddRange(definitionList);
+                    this.IngestData(definitionList, project);
                 }
-
-                // Ingest into database
-                this.IngestData(buildDefinitions, project);
             }
-
-            // Cleanup stale data
-            // await this.CleanupAsync();
         }
 
         private void IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)
@@ -137,18 +130,8 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             dbContext.BulkDelete(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
             dbContext.BulkInsert(buildDefinitionEntities);
             dbContext.BulkInsert(buildDefinitionStepEntities);
-            transaction.CommitAsync();
+            transaction.Commit();
             this.logger.LogInformation($"Inserted {buildDefinitionEntities.Count} build definitions and {buildDefinitionStepEntities.Count} build definition steps");
-        }
-
-        // Clean up any stale data since this is a snapshot of data ingestion
-        private async Task CleanupAsync()
-        {
-            this.logger.LogInformation($"Cleaning up stale data for {this.vssClient.OrganizationName}");
-            using IDbContextTransaction transaction = new VssDbContext(this.sqlServerConnectionString, logger).Database.BeginTransaction();
-            await this.dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());
-            await this.dbContext.BulkDeleteAsync(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());
-            await transaction.CommitAsync();
         }
 
         private string GetPhaseType(Phase phase)

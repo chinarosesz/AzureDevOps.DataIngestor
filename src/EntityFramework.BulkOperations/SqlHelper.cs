@@ -15,22 +15,6 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
         private const string Source = "Source";
         private const string Target = "Target";
 
-        internal static void BulkInsertToTable<TEntity>(DbContextWrapper context, IEnumerable<TEntity> entities, string tableName, OperationType operationType) where TEntity : class
-        {
-            EnumerableDataReader dataReader = ToDataReader(entities, context.EntityMapping, operationType);
-
-            IEnumerable<PropertyMapping> filteredProps = FilterProperties(context.EntityMapping.Properties, operationType);
-
-            using SqlBulkCopy bulkcopy = new SqlBulkCopy((SqlConnection)context.Connection, SqlBulkCopyOptions.Default | SqlBulkCopyOptions.KeepIdentity, (SqlTransaction)context.Transaction);
-            foreach (PropertyMapping column in filteredProps)
-            {
-                bulkcopy.ColumnMappings.Add(column.ColumnName, column.ColumnName);
-            }
-            bulkcopy.DestinationTableName = tableName;
-            bulkcopy.BulkCopyTimeout = 1000;
-            bulkcopy.WriteToServer(dataReader);
-        }
-
         internal static string RandomTableName(EntityMapping mapping)
         {
             string randomTableGuid = Guid.NewGuid().ToString().Substring(0, 6);
@@ -40,9 +24,7 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
         internal static string CreateTempTableQueryString(EntityMapping mapping, string tableName, OperationType operationType)
         {
             List<PropertyMapping> columns = FilterProperties(mapping.Properties, operationType).ToList();
-
-            List<string> paramList = columns.Select(column => $"[{column.ColumnName}]")
-                .ToList();
+            List<string> paramList = columns.Select(column => $"[{column.ColumnName}]").ToList();
             string paramListConcatenated = string.Join(", ", paramList);
 
             return $"SELECT {paramListConcatenated} INTO {tableName} FROM {mapping.TableName} WHERE 1 = 2";
@@ -89,10 +71,13 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
                 PropertyInfo property = items[index].GetType().GetProperty(propertyMapping.PropertyName);
 
                 if (property != null && property.CanWrite)
+                {
                     property.SetValue(items[index], result, null);
-
+                }
                 else
+                {
                     throw new Exception();
+                }
             }
 
             command = GetDropTableCommand(tmpOutputTableName);
@@ -113,7 +98,10 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
 
             foreach (PropertyMapping column in mapping.Properties.Where(propertyMapping => !propertyMapping.IsHierarchyMapping))
             {
-                if (column.IsPk) continue;
+                if (column.IsPk)
+                {
+                    continue;
+                }
 
                 parameters.Add($"[{Target}].[{column.ColumnName}] = [{Source}].[{column.ColumnName}]");
             }
@@ -133,8 +121,12 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
             keys.Remove(firstKey);
 
             if (keys.Any())
+            {
                 foreach (PropertyMapping key in keys)
+                {
                     command.Append($"AND [{Target}].[{key.ColumnName}] = [{Source}].[{key.ColumnName}]");
+                }
+            }
 
             return command.ToString();
         }
@@ -148,7 +140,11 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
 
             foreach (string column in columns.ToList())
             {
-                if (((identityColumn == null) || (column == identityColumn)) && (identityColumn != null)) continue;
+                if (((identityColumn == null) || (column == identityColumn)) && (identityColumn != null))
+                {
+                    continue;
+                }
+
                 selectColumns.Add($"[{Source}].[{column}]");
             }
 
@@ -167,8 +163,12 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
             command.Append(" (");
 
             foreach (string column in columns)
+            {
                 if (column != identityColumn)
+                {
                     insertColumns.Add($"[{column}]");
+                }
+            }
 
             command.Append(string.Join(", ", insertColumns));
             command.Append(") ");
@@ -181,7 +181,7 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
             return $"CREATE TABLE {tmpTablename}([{identityColumn}] int); ";
         }
 
-        private static IEnumerable<PropertyMapping> FilterProperties(IEnumerable<PropertyMapping> propertyMappings, OperationType operationType)
+        internal static IEnumerable<PropertyMapping> FilterProperties(IEnumerable<PropertyMapping> propertyMappings, OperationType operationType)
         {
             switch (operationType)
             {
@@ -194,7 +194,7 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
             }
         }
 
-        private static EnumerableDataReader ToDataReader<TEntity>(IEnumerable<TEntity> entities, EntityMapping mapping, OperationType operationType) where TEntity : class
+        internal static EnumerableDataReader ToDataReader<TEntity>(IEnumerable<TEntity> entities, EntityMapping mapping) where TEntity : class
         {
             //List<IPropertyMapping> tableColumns = mapping.Properties.FilterProperties(operationType).ToList();
             List<PropertyMapping> tableColumns = mapping.Properties.ToList();
@@ -208,11 +208,17 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
                 {
                     PropertyInfo prop = props.SingleOrDefault(info => info.Name == column.PropertyName);
                     if (prop != null)
+                    {
                         row.Add(prop.GetValue(item, null));
+                    }
                     else if (column.IsHierarchyMapping)
+                    {
                         row.Add(mapping.HierarchyMapping[item.GetType().Name]);
+                    }
                     else
+                    {
                         row.Add(null);
+                    }
                 }
 
                 rows.Add(row.ToArray());

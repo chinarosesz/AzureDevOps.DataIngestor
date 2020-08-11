@@ -46,7 +46,10 @@ namespace Shared.Helpers
         {
             bool moved = _enumerator.MoveNext();
             if (moved)
+            {
                 _currentElement = _enumerator.Current as object[];
+            }
+
             return moved;
         }
 
@@ -54,7 +57,10 @@ namespace Shared.Helpers
         {
             bool moved = _enumerator.MoveNext();
             if (moved)
+            {
                 _currentElement = _enumerator.Current as object[];
+            }
+
             return moved;
         }
 

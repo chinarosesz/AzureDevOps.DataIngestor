@@ -15,7 +15,6 @@ namespace AzureDevOpsDataCollector.Core.Collectors
         private readonly VssClient vssClient;
         private readonly string sqlConnectionString;
         private readonly IEnumerable<string> projectNames;
-        private readonly VssDbContext dbContext;
         private readonly ILogger logger;
 
         public RepositoryCollector(VssClient vssClient, string sqlConnectionString, IEnumerable<string> projectNames, ILogger logger)
@@ -41,13 +40,13 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             }
 
             // Insert repos
-            await this.IngestData(repositories);
+            this.IngestData(repositories);
         }
 
-        private async Task IngestData(List<GitRepository> repositories)
+        private void IngestData(List<GitRepository> repositories)
         {
             List<VssRepositoryEntity> entities = new List<VssRepositoryEntity>();
-            
+
             foreach (GitRepository repo in repositories)
             {
                 VssRepositoryEntity repoEntity = new VssRepositoryEntity
@@ -64,11 +63,11 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 entities.Add(repoEntity);
             }
 
-            using VssDbContext vssDbContext = new VssDbContext(this.sqlConnectionString, logger);
-            using IDbContextTransaction transaction = vssDbContext.Database.BeginTransaction();
-            await this.dbContext.BulkDeleteAsync(this.dbContext.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
-            await this.dbContext.BulkInsertAsync(entities);
-            await transaction.CommitAsync();
+            using VssDbContext dbContext = new VssDbContext(this.sqlConnectionString, logger);
+            using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
+            dbContext.BulkDelete(dbContext.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
+            dbContext.BulkInsert(entities);
+            transaction.Commit();
         }
     }
 }

@@ -1,14 +1,12 @@
-﻿using EntityFramework.BulkExtensions.Commons.BulkOperations;
-using EntityFramework.BulkExtensions.Commons.Context;
+﻿using EntityFramework.BulkExtensions.Commons.Context;
 using EntityFramework.BulkExtensions.Commons.Helpers;
 using EntityFramework.BulkExtensions.Commons.Mapping;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Storage;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EntityFrameworkCore.BulkExtensions
+namespace EntityFramework.BulkOperations
 {
     public static class BulkExtensions
     {
@@ -22,10 +20,9 @@ namespace EntityFrameworkCore.BulkExtensions
         /// <returns>The number of affected rows.</returns>
         public static int BulkInsert<TEntity>(this DbContext context, IEnumerable<TEntity> entities, BulkOptions bulkOptions = BulkOptions.Default) where TEntity : class
         {
-            DbContextWrapper contextWrapper = new DbContextWrapper(context.Database.GetDbConnection(), context.Database.CurrentTransaction.GetDbTransaction(), GetMapping<TEntity>(context));
-            IBulkOperation bulkOperation = new BulkInsert();
-            int commitedResult = bulkOperation.CommitTransaction(contextWrapper, entities, bulkOptions);
-            return commitedResult;
+            DbContextWrapper contextWrapper = new DbContextWrapper(context, GetMapping<TEntity>(context));
+            int committedResult = BulkOperation.BulkInsert(contextWrapper, entities, bulkOptions);
+            return committedResult;
         }
 
         /// <summary>
@@ -35,12 +32,11 @@ namespace EntityFrameworkCore.BulkExtensions
         /// <param name="entities">The collection of objects to be updated.</param>
         /// <typeparam name="TEntity">The type of the objects collection. TEntity must be a class.</typeparam>
         /// <returns>The number of affected rows.</returns>
-        public static int BulkUpdate<TEntity>(this DbContext context, IEnumerable<TEntity> entities) where TEntity : class
+        public static int BulkUpdate<TEntity>(this DbContext context, IEnumerable<TEntity> entities, BulkOptions options) where TEntity : class
         {
-            DbContextWrapper contextWrapper = new DbContextWrapper(context.Database.GetDbConnection(), context.Database.CurrentTransaction.GetDbTransaction(), GetMapping<TEntity>(context));
-            IBulkOperation bulkOperation = new BulkUpdate();
-            int commitedResult = bulkOperation.CommitTransaction(contextWrapper, entities);
-            return commitedResult;
+            DbContextWrapper contextWrapper = new DbContextWrapper(context, GetMapping<TEntity>(context));
+            int committedResult = BulkOperation.BulkUpdate(contextWrapper, entities);
+            return committedResult;
         }
 
         /// <summary>
@@ -52,10 +48,9 @@ namespace EntityFrameworkCore.BulkExtensions
         /// <returns>The number of affected rows.</returns>
         public static int BulkDelete<TEntity>(this DbContext context, IEnumerable<TEntity> entities) where TEntity : class
         {
-            DbContextWrapper contextWrapper = new DbContextWrapper(context.Database.GetDbConnection(), context.Database.CurrentTransaction.GetDbTransaction(), GetMapping<TEntity>(context));
-            IBulkOperation bulkOperation = new BulkDelete();
-            int commitedResult = bulkOperation.CommitTransaction(contextWrapper, entities);
-            return commitedResult;
+            DbContextWrapper contextWrapper = new DbContextWrapper(context, GetMapping<TEntity>(context));
+            int committedResult = BulkOperation.BulkDelete(contextWrapper, entities);
+            return committedResult;
         }
 
         private static EntityMapping GetMapping<TEntity>(DbContext context) where TEntity : class

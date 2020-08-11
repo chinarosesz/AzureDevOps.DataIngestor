@@ -1,6 +1,6 @@
 ﻿using AzureDevOpsDataCollector.Core.Entities;
 using EFCore.BulkExtensions;
-using EntityFrameworkCore.BulkExtensions;
+using EntityFramework.BulkOperations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;

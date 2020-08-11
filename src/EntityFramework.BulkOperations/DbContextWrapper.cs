@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Data;
 using EntityFramework.BulkExtensions.Commons.Mapping;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EntityFramework.BulkExtensions.Commons.Context
 {
@@ -11,14 +13,22 @@ namespace EntityFramework.BulkExtensions.Commons.Context
         public IDbConnection Connection { get; }
         public IDbTransaction Transaction { get; }
         private bool IsInternalTransaction { get; }
+        private readonly DbContext context;
 
-        internal DbContextWrapper(IDbConnection connection, IDbTransaction transaction, EntityMapping entityMapping)
+        internal DbContextWrapper(DbContext context, EntityMapping entityMapping)
         {
-            this.Connection = connection;
-            if (Connection.State != ConnectionState.Open) { Connection.Open(); }
+            this.context = context;
+            this.Connection = this.context.Database.GetDbConnection();
+            this.Transaction = this.context.Database.CurrentTransaction?.GetDbTransaction();
 
-            IsInternalTransaction = transaction == null;
-            Transaction = transaction ?? connection.BeginTransaction();
+            if (this.Connection.State != ConnectionState.Open)
+            {
+                this.Connection.Open();
+            }
+
+            IsInternalTransaction = (this.Transaction == null);
+            this.Transaction = this.Transaction ?? this.context.Database.GetDbConnection().BeginTransaction();
+
             EntityMapping = entityMapping;
         }
 
@@ -26,7 +36,7 @@ namespace EntityFramework.BulkExtensions.Commons.Context
         {
             IDbCommand sqlCommand = Connection.CreateCommand();
             sqlCommand.Transaction = Transaction;
-            sqlCommand.CommandTimeout = Connection.ConnectionTimeout;
+            sqlCommand.CommandTimeout = this.context.Database.GetCommandTimeout().Value;
             sqlCommand.CommandText = command;
 
             return sqlCommand.ExecuteNonQuery();
@@ -37,7 +47,7 @@ namespace EntityFramework.BulkExtensions.Commons.Context
             List<T> list = new List<T>();
             IDbCommand sqlCommand = Connection.CreateCommand();
             sqlCommand.Transaction = Transaction;
-            sqlCommand.CommandTimeout = Connection.ConnectionTimeout;
+            sqlCommand.CommandTimeout = this.context.Database.GetCommandTimeout().Value;
             sqlCommand.CommandText = command;
 
             using (IDataReader reader = sqlCommand.ExecuteReader())
