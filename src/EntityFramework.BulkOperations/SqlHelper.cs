@@ -1,8 +1,6 @@
 ﻿using EntityFramework.BulkExtensions.Commons.Context;
 using EntityFramework.BulkExtensions.Commons.Mapping;
 using EntityFramework.BulkOperations;
-using Microsoft.Data.SqlClient;
-using Shared.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -14,9 +12,6 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
 {
     internal static class SqlHelper
     {
-        private const string Source = "Source";
-        private const string Target = "Target";
-
         internal static string RandomTableName(EntityMapping mapping)
         {
             string randomTableGuid = Guid.NewGuid().ToString().Substring(0, 6);
@@ -104,45 +99,9 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
             }
         }
 
-        internal static string CreateTempTableQueryString(EntityMapping mapping, string tableName, OperationType operationType)
-        {
-            List<PropertyMapping> columns = FilterProperties(mapping.Properties, operationType).ToList();
-            List<string> paramList = columns.Select(column => $"[{column.ColumnName}]").ToList();
-            string paramListConcatenated = string.Join(", ", paramList);
-
-            return $"SELECT {paramListConcatenated} INTO {tableName} FROM {mapping.TableName} WHERE 1 = 2";
-        }
-
-        internal static string BuildDeleteCommand(DbContextWrapper context, string tmpTableName)
-        {
-            return $"MERGE INTO {context.EntityMapping.FullTableName} WITH (HOLDLOCK) AS Target USING {tmpTableName} AS Source " +
-                   $"{SqlHelper.PrimaryKeysComparator(context.EntityMapping)} WHEN MATCHED THEN DELETE;" +
-                   GetDropTableCommand(tmpTableName);
-        }
-
-        internal static string BuildMergeCommand(DbContextWrapper context, string tmpTableName)
-        {
-            return $"MERGE INTO {context.EntityMapping.FullTableName} WITH (HOLDLOCK) AS Target USING {tmpTableName} AS Source " +
-                   $"{SqlHelper.PrimaryKeysComparator(context.EntityMapping)} WHEN MATCHED THEN UPDATE {SqlHelper.BuildUpdateSet(context.EntityMapping)}; " +
-                   GetDropTableCommand(tmpTableName);
-        }
-
         internal static bool WillOutputGeneratedValues(EntityMapping mapping, BulkOptions options)
         {
             return (options.HasFlag(BulkOptions.OutputIdentity) && mapping.HasGeneratedKeys) || (options.HasFlag(BulkOptions.OutputComputed) && mapping.HasComputedColumns);
-        }
-
-        internal static string BuildInsertOrUpdateCommand(DbContextWrapper context, string tempTableName)
-        {
-            List<string> columns = context.EntityMapping.Properties.Select(propertyMapping => propertyMapping.ColumnName).ToList();
-            List<bool> identityColumns = context.EntityMapping.Pks.Select(v => v.IsPk).ToList();
-            var identityColumn = context.EntityMapping.Pks.First().ColumnName;
-            string insertCommand = SqlHelper.BuildInsertIntoSet(columns, identityColumn, tempTableName);
-
-            return $"MERGE INTO {context.EntityMapping.FullTableName} WITH (HOLDLOCK) AS Target USING {tempTableName} AS Source " +
-                   $"{SqlHelper.PrimaryKeysComparator(context.EntityMapping)} WHEN MATCHED THEN UPDATE {SqlHelper.BuildUpdateSet(context.EntityMapping)} " +
-                   $"{SqlHelper.PrimaryKeysComparator(context.EntityMapping)} WHEN NOT MATCHED THEN {insertCommand}; " +
-                   GetDropTableCommand(tempTableName);
         }
 
         internal static string BuildMergeCommand(DbContextWrapper context, string tmpTableName, OperationType operationType)
@@ -227,164 +186,5 @@ namespace EntityFramework.BulkExtensions.Commons.Helpers
             }
             return stringBuilder.ToString();
         }
-
-        internal static string GetInsertIntoStagingTableCmd(EntityMapping mapping, string tmpOutputTableName, string tmpTableName, string identityColumn)
-        {
-            List<string> columns = mapping.Properties.Select(propertyMapping => propertyMapping.ColumnName).ToList();
-
-            string comm = GetOutputCreateTableCmd(tmpOutputTableName, identityColumn)
-                       + BuildInsertIntoSet(columns, identityColumn, mapping.FullTableName)
-                       + $"OUTPUT INSERTED.{identityColumn} INTO "
-                       + tmpOutputTableName + $"([{identityColumn}]) "
-                       + BuildSelectSet(columns, identityColumn)
-                       + $" FROM {tmpTableName} AS Source; "
-                       + GetDropTableCommand(tmpTableName);
-
-            return comm;
-        }
-
-        internal static void LoadFromTmpOutputTable<TEntity>(DbContextWrapper context, string tmpOutputTableName, PropertyMapping propertyMapping, IList<TEntity> items)
-        {
-            string command = $"SELECT {propertyMapping.ColumnName} FROM {tmpOutputTableName} ORDER BY {propertyMapping.ColumnName};";
-            List<int> identities = context.SqlQuery<int>(command).ToList();
-
-            foreach (int result in identities)
-            {
-                int index = identities.IndexOf(result);
-                PropertyInfo property = items[index].GetType().GetProperty(propertyMapping.PropertyName);
-
-                if (property != null && property.CanWrite)
-                {
-                    property.SetValue(items[index], result, null);
-                }
-                else
-                {
-                    throw new Exception();
-                }
-            }
-
-            command = GetDropTableCommand(tmpOutputTableName);
-            context.ExecuteSqlCommand(command);
-        }
-
-        private static string BuildUpdateSet(EntityMapping mapping)
-        {
-            StringBuilder command = new StringBuilder();
-            List<string> parameters = new List<string>();
-
-            command.Append("SET ");
-
-            foreach (PropertyMapping column in mapping.Properties.Where(propertyMapping => !propertyMapping.IsHierarchyMapping))
-            {
-                if (column.IsPk)
-                {
-                    continue;
-                }
-
-                parameters.Add($"[{Target}].[{column.ColumnName}] = [{Source}].[{column.ColumnName}]");
-            }
-
-            command.Append(string.Join(", ", parameters) + " ");
-
-            return command.ToString();
-        }
-
-        private static string BuildSelectSet(IEnumerable<string> columns, string identityColumn)
-        {
-            StringBuilder command = new StringBuilder();
-            List<string> selectColumns = new List<string>();
-
-            command.Append("SELECT ");
-
-            foreach (string column in columns.ToList())
-            {
-                if (((identityColumn == null) || (column == identityColumn)) && (identityColumn != null))
-                {
-                    continue;
-                }
-
-                selectColumns.Add($"[{Source}].[{column}]");
-            }
-
-            command.Append(string.Join(", ", selectColumns));
-
-            return command.ToString();
-        }
-
-        private static string BuildInsertIntoSet(IEnumerable<string> columns, string identityColumn, string tableName)
-        {
-            StringBuilder command = new StringBuilder();
-            List<string> insertColumns = new List<string>();
-
-            command.Append("INSERT INTO ");
-            command.Append(tableName);
-            command.Append(" (");
-
-            foreach (string column in columns)
-            {
-                if (column != identityColumn)
-                {
-                    insertColumns.Add($"[{column}]");
-                }
-            }
-
-            command.Append(string.Join(", ", insertColumns));
-            command.Append(")");
-
-            return command.ToString();
-        }
-
-        private static string GetOutputCreateTableCmd(string tmpTablename, string identityColumn)
-        {
-            return $"CREATE TABLE {tmpTablename}([{identityColumn}] int); ";
-        }
-
-        internal static IEnumerable<PropertyMapping> FilterProperties(IEnumerable<PropertyMapping> propertyMappings, OperationType operationType)
-        {
-            switch (operationType)
-            {
-                case OperationType.Delete:
-                    return propertyMappings.Where(propertyMapping => propertyMapping.IsPk).ToList();
-                case OperationType.Update:
-                    return propertyMappings.Where(propertyMapping => !propertyMapping.IsHierarchyMapping).ToList();
-                default:
-                    return propertyMappings;
-            }
-        }
-
-        internal static EnumerableDataReader ToDataReader<TEntity>(IEnumerable<TEntity> entities, EntityMapping mapping) where TEntity : class
-        {
-            //List<IPropertyMapping> tableColumns = mapping.Properties.FilterProperties(operationType).ToList();
-            List<PropertyMapping> tableColumns = mapping.Properties.ToList();
-            List<object[]> rows = new List<object[]>();
-
-            foreach (TEntity item in entities)
-            {
-                PropertyInfo[] props = item.GetType().GetProperties(BindingFlags.FlattenHierarchy | BindingFlags.Public | BindingFlags.Instance);
-                List<object> row = new List<object>();
-                foreach (PropertyMapping column in tableColumns)
-                {
-                    PropertyInfo prop = props.SingleOrDefault(info => info.Name == column.PropertyName);
-                    if (prop != null)
-                    {
-                        row.Add(prop.GetValue(item, null));
-                    }
-                    else if (column.IsHierarchyMapping)
-                    {
-                        row.Add(mapping.HierarchyMapping[item.GetType().Name]);
-                    }
-                    else
-                    {
-                        row.Add(null);
-                    }
-                }
-
-                rows.Add(row.ToArray());
-            }
-
-            return new EnumerableDataReader(tableColumns.Select(propertyMapping => propertyMapping.ColumnName), rows);
-        }
-
-
     }
 }
