@@ -9,11 +9,20 @@ namespace EntityFramework.BulkExtensions.Commons.Context
 {
     internal class DbContextWrapper
     {
+        private bool IsInternalTransaction { get; }
+        private readonly DbContext context;
+        private int currentTimeout;
+
         public EntityMapping EntityMapping { get; }
         public IDbConnection Connection { get; }
         public IDbTransaction Transaction { get; }
-        private bool IsInternalTransaction { get; }
-        private readonly DbContext context;
+        public int BatchSize { get; } = 5000;
+
+        public int Timeout
+        {
+            get { return this.currentTimeout; }
+            private set { this.currentTimeout = ((value > 60) ? value : 60); }
+        }
 
         internal DbContextWrapper(DbContext context, EntityMapping entityMapping)
         {
@@ -40,6 +49,16 @@ namespace EntityFramework.BulkExtensions.Commons.Context
             sqlCommand.CommandText = command;
 
             return sqlCommand.ExecuteNonQuery();
+        }
+
+        public IDataReader SqlQuery(string command)
+        {
+            if (string.IsNullOrEmpty(command))
+            {
+                return null;
+            }
+            IDbCommand dbCommand = CreateCommand(command);
+            return dbCommand.ExecuteReader();
         }
 
         public IEnumerable<T> SqlQuery<T>(string command) where T : struct
@@ -80,6 +99,19 @@ namespace EntityFramework.BulkExtensions.Commons.Context
             {
                 Transaction.Rollback();
             }
+        }
+
+        private IDbCommand CreateCommand(string command)
+        {
+            if (string.IsNullOrEmpty(command))
+            {
+                return null;
+            }
+            IDbCommand dbCommand = Connection.CreateCommand();
+            dbCommand.Transaction = Transaction;
+            dbCommand.CommandTimeout = Timeout;
+            dbCommand.CommandText = command;
+            return dbCommand;
         }
     }
 }

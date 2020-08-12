@@ -1,11 +1,7 @@
 ﻿using AzureDevOpsDataCollector.Core.Entities;
-using EFCore.BulkExtensions;
-using EntityFramework.BulkOperations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Clients
 {
@@ -66,42 +62,6 @@ namespace AzureDevOpsDataCollector.Core.Clients
 
             modelBuilder.Entity<VssPullRequestWatermarkEntity>()
                 .HasKey(p => new { p.PullRequestStatus, p.ProjectId });
-        }
-
-        public async Task BulkInsertOrUpdateAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
-        {
-            this.logger.LogInformation($"InsertOrUpdating {entities.Count} {typeof(T).Name} entities");
-            await DbContextBulkExtensions.BulkInsertOrUpdateAsync(this, entities, bulkConfig);
-        }
-
-        public async Task BulkInsertOrUpdateOrDeleteAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
-        {
-            this.logger.LogInformation($"BulkInsertOrUpdateOrDelete {entities.Count} {typeof(T).Name} entities");
-            await DbContextBulkExtensions.BulkInsertOrUpdateOrDeleteAsync(this, entities, bulkConfig);
-        }
-
-        public async Task BulkInsertAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
-        {
-            this.logger.LogInformation($"BulkInsert {entities.Count} {typeof(T).Name} entities");
-            await DbContextBulkExtensions.BulkInsertAsync(this, entities, bulkConfig);
-        }
-
-        public async Task BulkDeleteAsync<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
-        {
-            this.logger.LogInformation($"BulkDelete {entities.Count} {typeof(T).Name} entities");
-            await DbContextBulkExtensions.BulkDeleteAsync(this, entities, bulkConfig);
-        }
-
-        public void BulkInsert<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
-        {
-            this.logger.LogInformation($"BulkInsert {entities.Count} {typeof(T).Name} entities");
-            BulkExtensions.BulkInsert(this, entities);
-        }
-
-        public void BulkDelete<T>(IList<T> entities, BulkConfig bulkConfig = null) where T : class
-        {
-            this.logger.LogInformation($"BulkDelete {entities.Count} {typeof(T).Name} entities");
-            BulkExtensions.BulkDelete(this, entities);
         }
     }
 }

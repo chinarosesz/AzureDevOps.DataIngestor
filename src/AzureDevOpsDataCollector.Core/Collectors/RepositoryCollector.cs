@@ -1,5 +1,6 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
+using EntityFramework.BulkOperations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
@@ -63,10 +64,10 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 entities.Add(repoEntity);
             }
 
-            using VssDbContext dbContext = new VssDbContext(this.sqlConnectionString, logger);
-            using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
-            dbContext.BulkDelete(dbContext.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
-            dbContext.BulkInsert(entities);
+            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            using IDbContextTransaction transaction = context.Database.BeginTransaction();
+            context.BulkDelete(context.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
+            context.BulkInsert(entities);
             transaction.Commit();
         }
     }

@@ -1,5 +1,6 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
+using EntityFramework.BulkOperations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Build.WebApi;
@@ -123,15 +124,13 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 // todo: Need to parse yaml file here
             }
 
-            this.logger.LogInformation("Inserting build definitions");
+            this.logger.LogInformation("Ingesting build definitions");
             using VssDbContext dbContext = new VssDbContext(this.sqlServerConnectionString, logger);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
-            dbContext.BulkDelete(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
-            dbContext.BulkDelete(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.ProjectId == project.Id).ToList());
-            dbContext.BulkInsert(buildDefinitionEntities);
-            dbContext.BulkInsert(buildDefinitionStepEntities);
+            dbContext.BulkInsertOrUpdate(buildDefinitionEntities);
+            dbContext.BulkInsertOrUpdate(buildDefinitionStepEntities);
             transaction.Commit();
-            this.logger.LogInformation($"Inserted {buildDefinitionEntities.Count} build definitions and {buildDefinitionStepEntities.Count} build definition steps");
+            this.logger.LogInformation($"Updated {buildDefinitionEntities.Count} build definitions and {buildDefinitionStepEntities.Count} build definition steps");
         }
 
         private string GetPhaseType(Phase phase)

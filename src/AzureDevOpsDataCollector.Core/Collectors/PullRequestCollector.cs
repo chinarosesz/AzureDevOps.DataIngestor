@@ -1,6 +1,7 @@
 ﻿using AzureDevOpsDataCollector.Core.Clients;
 using AzureDevOpsDataCollector.Core.Entities;
-using EFCore.BulkExtensions;
+using EntityFramework.BulkOperations;
+using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using System;
@@ -12,14 +13,16 @@ namespace AzureDevOpsDataCollector.Core.Collectors
 {
     public class PullRequestCollector : CollectorBase
     {
+        private readonly ILogger logger;
         private readonly VssClient vssClient;
-        private readonly VssDbContext dbContext;
+        private readonly string sqlConnectionString;
         private readonly IEnumerable<string> projectNames;
 
-        public PullRequestCollector(VssClient vssClient, VssDbContext dbContext, IEnumerable<string> projectNames)
+        public PullRequestCollector(VssClient vssClient, string sqlConnectionString, IEnumerable<string> projectNames, ILogger logger)
         {
+            this.logger = logger;
             this.vssClient = vssClient;
-            this.dbContext = dbContext;
+            this.sqlConnectionString = sqlConnectionString;
             this.projectNames = projectNames;
         }
 
@@ -31,12 +34,12 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             // For each repositry in each project, retrieve and ingest pull request data
             foreach (TeamProjectReference project in projects)
             {
-                await RetrieveAndIngestPullRequestAsync(project, PullRequestStatus.Active);
-                await RetrieveAndIngestPullRequestAsync(project, PullRequestStatus.Completed);
+                RetrieveAndIngestPullRequest(project, PullRequestStatus.Active);
+                RetrieveAndIngestPullRequest(project, PullRequestStatus.Completed);
             }
         }
 
-        private async Task RetrieveAndIngestPullRequestAsync(TeamProjectReference project, PullRequestStatus status)
+        private void RetrieveAndIngestPullRequest(TeamProjectReference project, PullRequestStatus status)
         {
             // Query for most recent date from watermark table first
             DateTime mostRecentDate = this.GetPullRequestWatermark(project, status);
@@ -47,17 +50,17 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             // For each list ingest pull requests retrieved from Azure DevOps
             foreach (List<GitPullRequest> pullRequestList in pullRequestLists)
             {
-                await this.IngestPullRequestsAsync(pullRequestList, project);
+                this.IngestPullRequests(pullRequestList, project);
             }
 
             // Update watermark once data is successfully ingested so next time it doesn't repeat
             // Note: If there is an issue before getting to update, data ingestion will have to run again
             // Note: Since we are going back one month ingesting data again if watermark is unable to update
             // Note: shouldn't be much of a problem and likely not happen too often
-            await this.UpdatePullRequestWatermarkAsync(status, project);
+            this.UpdatePullRequestWatermark(status, project);
         }
 
-        private async Task IngestPullRequestsAsync(List<GitPullRequest> pullRequests, TeamProjectReference project)
+        private void IngestPullRequests(List<GitPullRequest> pullRequests, TeamProjectReference project)
         {
             List<VssPullRequestEntity> entities = new List<VssPullRequestEntity>();
 
@@ -85,10 +88,11 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 entities.Add(entity);
             }
 
-            await this.dbContext.BulkInsertOrUpdateAsync(entities);
+            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            context.BulkInsertOrUpdate(entities);
         }
 
-        private async Task UpdatePullRequestWatermarkAsync(PullRequestStatus status, TeamProjectReference project)
+        private void UpdatePullRequestWatermark(PullRequestStatus status, TeamProjectReference project)
         {
             VssPullRequestWatermarkEntity vssPullRequestWatermarkEntity = new VssPullRequestWatermarkEntity
             {
@@ -99,7 +103,8 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 PullRequestStatus = status.ToString(),
             };
 
-            await this.dbContext.BulkInsertOrUpdateAsync(new List<VssPullRequestWatermarkEntity> { vssPullRequestWatermarkEntity });
+            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            context.BulkInsertOrUpdate(new List<VssPullRequestWatermarkEntity> { vssPullRequestWatermarkEntity });
         }
 
         private DateTime GetPullRequestWatermark(TeamProjectReference project, PullRequestStatus status)
@@ -108,7 +113,8 @@ namespace AzureDevOpsDataCollector.Core.Collectors
             DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-1);
 
             // Get latest ingested date for pull request from pull request watermark table
-            VssPullRequestWatermarkEntity latestWatermark = dbContext.VssPullRequestWatermarkEntities.Where(v => v.ProjectId == project.Id && v.PullRequestStatus == status.ToString()).FirstOrDefault();
+            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            VssPullRequestWatermarkEntity latestWatermark = context.VssPullRequestWatermarkEntities.Where(v => v.ProjectId == project.Id && v.PullRequestStatus == status.ToString()).FirstOrDefault();
             if (latestWatermark != null)
             {
                 mostRecentDate = latestWatermark.RowUpdatedDate;

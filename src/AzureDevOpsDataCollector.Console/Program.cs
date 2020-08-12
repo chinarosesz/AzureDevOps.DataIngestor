@@ -29,13 +29,13 @@ namespace AzureDevOpsDataCollector.Console
             VssClient vssClient = await Program.ConnectAzureDevOpsAsync(parsedOptions, logger);
 
             // Run collector
-            await Program.RunCollectorAsync(parsedOptions, vssClient, dbContext, logger, parsedOptions.SqlServerConnectionString);
+            await Program.RunCollectorAsync(parsedOptions, vssClient, parsedOptions.SqlServerConnectionString, logger);
 
             // Returns zero on success
             return 0;
         }
 
-        private static async Task RunCollectorAsync(CommandOptions parsedOptions, VssClient vssClient, VssDbContext dbContext, ILogger logger, string sqlConnectionString)
+        private static async Task RunCollectorAsync(CommandOptions parsedOptions, VssClient vssClient, string sqlConnectionString, ILogger logger)
         {
             CollectorBase collector = null;
             if (parsedOptions is ProjectCommandOptions)
@@ -50,7 +50,7 @@ namespace AzureDevOpsDataCollector.Console
             else if (parsedOptions is PullRequestCommandOptions pullRequestCommandOptions)
             {
                 IEnumerable<string> projects = pullRequestCommandOptions.Projects;
-                collector = new PullRequestCollector(vssClient, dbContext, projects);
+                collector = new PullRequestCollector(vssClient, sqlConnectionString, projects, logger);
             }
             else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
             {
