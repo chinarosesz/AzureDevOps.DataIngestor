@@ -1,5 +1,6 @@
 ﻿using EntityFramework.BulkExtensions.Commons.Helpers;
 using EntityFramework.BulkExtensions.Commons.Mapping;
+using FastMember;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -71,11 +72,6 @@ namespace EntityFramework.BulkOperations
 
             entityMapping.Properties = properties;
             return entityMapping;
-        }
-
-        private static Dictionary<string, string> GetHierarchyMappings(IEnumerable<IEntityType> hierarchy)
-        {
-            return hierarchy.ToDictionary(entityType => entityType.ClrType.Name, entityType => entityType.GetDiscriminatorValue() as string);
         }
 
         private static IEnumerable<PropertyMapping> GetPropertyMappings(this IEnumerable<IEntityType> hierarchy)
@@ -201,13 +197,13 @@ namespace EntityFramework.BulkOperations
 
         private static string BuildStagingTableCommand(EntityMapping mapping, string tableName, OperationType operationType, BulkOptions options)
         {
-            List<PropertyMapping> source = SqlHelper.GetPropertiesByOperation(mapping, operationType).ToList();
+            List<PropertyMapping> source = BulkOperation.GetPropertiesByOperation(mapping, operationType).ToList();
             if (source.All((PropertyMapping s) => s.IsPk && s.IsDbGenerated) && operationType == OperationType.Update)
             {
                 return null;
             }
             List<string> list = source.Select((PropertyMapping column) => string.Format("{0}.[{1}]", "Source", column.ColumnName)).ToList();
-            if (SqlHelper.WillOutputGeneratedValues(mapping, options))
+            if (BulkOperation.WillOutputGeneratedValues(mapping, options))
             {
                 list.Add(string.Format("1 as [{0}]", "Bulk_Identity"));
             }
@@ -219,7 +215,7 @@ namespace EntityFramework.BulkOperations
         {           
             EntityMapping entityMapping = GetMapping<TEntity>(dbContext);
             string randomTableName = BulkOperation.RandomTableName(entityMapping);
-            bool outputGeneratedValues = SqlHelper.WillOutputGeneratedValues(entityMapping, options);
+            bool outputGeneratedValues = BulkOperation.WillOutputGeneratedValues(entityMapping, options);
 
             // If there are no entities to insert return
             if (!collection.Any())
@@ -255,7 +251,7 @@ namespace EntityFramework.BulkOperations
                     BulkOperation.ExecuteSqlCommand(dbContext, outputTableCommand);
                     mergeCommand += BulkOperation.BuildMergeOutputSet(randomTableName2, entityProperties);
                 }
-                mergeCommand += SqlHelper.GetDropTableCommand(randomTableName);
+                mergeCommand += BulkOperation.GetDropTableCommand(randomTableName);
                 int result = BulkOperation.ExecuteSqlCommand(dbContext, mergeCommand);
 
                 // Load generated outputs
@@ -269,6 +265,7 @@ namespace EntityFramework.BulkOperations
                 {
                     dbContext.Database.GetDbConnection().BeginTransaction().Commit();
                 }
+
                 return result;
             }
             catch (Exception)
@@ -292,11 +289,6 @@ namespace EntityFramework.BulkOperations
                 while (dataReader.Read())
                 {
                     object obj = items.ElementAt((int)dataReader["Bulk_Identity"]);
-                    EntryWrapper entryWrapper;
-                    if ((entryWrapper = (obj as EntryWrapper)) != null)
-                    {
-                        obj = entryWrapper.Entity;
-                    }
                     foreach (PropertyMapping item in list)
                     {
                         PropertyInfo property2 = obj.GetType().GetProperty(item.PropertyName);
@@ -309,7 +301,7 @@ namespace EntityFramework.BulkOperations
                     }
                 }
             }
-            command = SqlHelper.GetDropTableCommand(outputTableName);
+            command = BulkOperation.GetDropTableCommand(outputTableName);
             dbCommand = BulkOperation.ToDbCommand(context, command);
             dbCommand.ExecuteNonQuery();
         }
@@ -329,8 +321,8 @@ namespace EntityFramework.BulkOperations
 
         private static void BulkInsertToTable<TEntity>(EntityMapping entityMapping, DbContext context, IList<TEntity> entities, string tableName, OperationType operationType, BulkOptions options) where TEntity : class
         {
-            List<PropertyMapping> list = SqlHelper.GetPropertiesByOperation(entityMapping, operationType).ToList();
-            if (SqlHelper.WillOutputGeneratedValues(entityMapping, options))
+            List<PropertyMapping> list = BulkOperation.GetPropertiesByOperation(entityMapping, operationType).ToList();
+            if (BulkOperation.WillOutputGeneratedValues(entityMapping, options))
             {
                 list.Add(new PropertyMapping
                 {
@@ -347,7 +339,9 @@ namespace EntityFramework.BulkOperations
                 sqlBulkCopy.BatchSize = 5000;
                 sqlBulkCopy.DestinationTableName = tableName;
                 sqlBulkCopy.BulkCopyTimeout = context.Database.GetCommandTimeout().Value;
-                sqlBulkCopy.WriteToServer((IDataReader)DataReaderHelper.ToDataReader(entities, entityMapping, list));
+                ObjectReader reader = ObjectReader.Create(entities);
+                sqlBulkCopy.WriteToServer(reader);
+                // sqlBulkCopy.WriteToServer((IDataReader)DataReaderHelper.ToDataReader(entities, entityMapping, list));
             }
         }
 
@@ -366,6 +360,32 @@ namespace EntityFramework.BulkOperations
                 return mapping.Properties.Where((PropertyMapping property) => !property.IsPk && property.IsDbGenerated);
             }
             return mapping.Properties;
+        }
+
+        private static string GetDropTableCommand(string tableName)
+        {
+            return $"; DROP TABLE {tableName};";
+        }
+
+        private static IEnumerable<PropertyMapping> GetPropertiesByOperation(EntityMapping mapping, OperationType operationType)
+        {
+            switch (operationType)
+            {
+                case OperationType.Delete:
+                    return mapping.Properties.Where((PropertyMapping propertyMapping) => propertyMapping.IsPk);
+                case OperationType.Update:
+                    return from propertyMapping in mapping.Properties
+                           where !propertyMapping.IsHierarchyMapping
+                           where propertyMapping.IsPk || !propertyMapping.IsDbGenerated
+                           select propertyMapping;
+                default:
+                    return mapping.Properties.Where((PropertyMapping propertyMapping) => propertyMapping.IsPk || !propertyMapping.IsDbGenerated);
+            }
+        }
+
+        internal static bool WillOutputGeneratedValues(EntityMapping mapping, BulkOptions options)
+        {
+            return (options.HasFlag(BulkOptions.OutputIdentity) && mapping.HasGeneratedKeys) || (options.HasFlag(BulkOptions.OutputComputed) && mapping.HasComputedColumns);
         }
     }
 }
