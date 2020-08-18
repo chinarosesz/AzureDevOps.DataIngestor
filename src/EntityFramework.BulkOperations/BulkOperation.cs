@@ -58,34 +58,8 @@ namespace EntityFramework.BulkOperations
         private static EntityMapping GetMapping<TEntity>(DbContext context) where TEntity : class
         {
             IEntityType entityType = context.Model.FindEntityType(typeof(TEntity));
-            IEntityType baseType = entityType.BaseType ?? entityType;
-            List<IEntityType> hierarchy = context.Model.GetEntityTypes()
-                .Where(type => type.BaseType == null ? type == baseType : type.BaseType == baseType)
-                .ToList();
-            List<PropertyMapping> properties = hierarchy.GetPropertyMappings().ToList();
-
-            EntityMapping entityMapping = new EntityMapping
-            {
-                TableName = entityType.GetTableName(),
-                Schema = entityType.GetSchema(),
-            };
-
-            entityMapping.Properties = properties;
+            EntityMapping entityMapping = new EntityMapping(entityType);
             return entityMapping;
-        }
-
-        private static IEnumerable<PropertyMapping> GetPropertyMappings(this IEnumerable<IEntityType> hierarchy)
-        {
-            return hierarchy
-                .SelectMany(type => type.GetProperties().Where(property => !property.IsShadowProperty()))
-                .Distinct()
-                .ToList()
-                .Select(property => new PropertyMapping
-                {
-                    PropertyName = property.Name,
-                    ColumnName = property.GetColumnName(),
-                    IsPk = property.IsPrimaryKey()
-                });
         }
 
         private static string RandomTableName(EntityMapping mapping)
@@ -114,16 +88,19 @@ namespace EntityFramework.BulkOperations
 
         private static string PrimaryKeysComparator(EntityMapping mapping)
         {
-            List<PropertyMapping> list = mapping.Pks.ToList();
+            List<IProperty> primaryKeys = mapping.PrimaryKeyProperties.ToList();
             StringBuilder stringBuilder = new StringBuilder();
-            PropertyMapping propertyMapping = list.First();
-            stringBuilder.Append(string.Format("ON [{0}].[{1}] = [{2}].[{3}] ", "Target", propertyMapping.ColumnName, "Source", propertyMapping.ColumnName));
-            list.Remove(propertyMapping);
-            if (list.Any())
+            IProperty firstPrimaryKey = primaryKeys.First();
+
+            stringBuilder.Append(string.Format("ON [{0}].[{1}] = [{2}].[{3}] ", "Target", firstPrimaryKey.GetColumnName(), "Source", firstPrimaryKey.GetColumnName()));
+            
+            primaryKeys.Remove(firstPrimaryKey);
+
+            if (primaryKeys.Any())
             {
-                foreach (PropertyMapping item in list)
+                foreach (IProperty item in primaryKeys)
                 {
-                    stringBuilder.Append(string.Format("AND [{0}].[{1}] = [{2}].[{3}]", "Target", item.ColumnName, "Source", item.ColumnName));
+                    stringBuilder.Append(string.Format("AND [{0}].[{1}] = [{2}].[{3}]", "Target", item.GetColumnName(), "Source", item.GetColumnName()));
                 }
             }
             return stringBuilder.ToString();
@@ -134,14 +111,15 @@ namespace EntityFramework.BulkOperations
             StringBuilder stringBuilder = new StringBuilder();
             List<string> list = new List<string>();
             List<string> list2 = new List<string>();
-            List<PropertyMapping> list3 = mapping.Properties.Where((PropertyMapping propertyMapping) => !propertyMapping.IsDbGenerated).ToList();
+            //List<IProperty> list3 = mapping.EntityProperties.Where((IProperty entityProp) => entityProp.ValueGenerated != ValueGenerated.Never).ToList();
+            List<IProperty> list3 = mapping.EntityProperties.ToList();
             stringBuilder.Append(" WHEN NOT MATCHED BY TARGET THEN INSERT ");
             if (list3.Any())
             {
-                foreach (PropertyMapping item in list3)
+                foreach (IProperty item in list3)
                 {
-                    list.Add($"[{item.ColumnName}]");
-                    list2.Add(string.Format("[{0}].[{1}]", "Source", item.ColumnName));
+                    list.Add($"[{item.GetColumnName()}]");
+                    list2.Add(string.Format("[{0}].[{1}]", "Source", item.GetColumnName()));
                 }
                 stringBuilder.Append(string.Format("({0}) VALUES ({1})", string.Join(", ", list), string.Join(", ", list2)));
             }
@@ -156,17 +134,16 @@ namespace EntityFramework.BulkOperations
         {
             StringBuilder stringBuilder = new StringBuilder();
             List<string> list = new List<string>();
-            List<PropertyMapping> list2 = (from propertyMapping in mapping.Properties
-                                           where !propertyMapping.IsPk
-                                           where !propertyMapping.IsDbGenerated
-                                           where !propertyMapping.IsHierarchyMapping
-                                           select propertyMapping).ToList();
+            List<IProperty> list2 = (from entityProp in mapping.EntityProperties
+                                           where !entityProp.IsPrimaryKey()
+                                           where entityProp.ValueGenerated != ValueGenerated.Never
+                                           select entityProp).ToList();
             if (list2.Any())
             {
                 stringBuilder.Append("WHEN MATCHED THEN UPDATE SET ");
-                foreach (PropertyMapping item in list2)
+                foreach (IProperty item in list2)
                 {
-                    list.Add(string.Format("[{0}].[{1}] = [{2}].[{3}]", "Target", item.ColumnName, "Source", item.ColumnName));
+                    list.Add(string.Format("[{0}].[{1}] = [{2}].[{3}]", "Target", item.GetColumnName(), "Source", item.GetColumnName()));
                 }
                 stringBuilder.Append(string.Join(", ", list) + " ");
             }
@@ -197,12 +174,13 @@ namespace EntityFramework.BulkOperations
 
         private static string BuildStagingTableCommand(EntityMapping mapping, string tableName, OperationType operationType, BulkOptions options)
         {
-            List<PropertyMapping> source = BulkOperation.GetPropertiesByOperation(mapping, operationType).ToList();
-            if (source.All((PropertyMapping s) => s.IsPk && s.IsDbGenerated) && operationType == OperationType.Update)
+            List<IProperty> source = BulkOperation.GetPropertiesByOperation(mapping, operationType).ToList();
+            if (source.All((IProperty s) => s.IsPrimaryKey() && s.ValueGenerated == ValueGenerated.OnAddOrUpdate) && operationType == OperationType.Update)
             {
                 return null;
             }
-            List<string> list = source.Select((PropertyMapping column) => string.Format("{0}.[{1}]", "Source", column.ColumnName)).ToList();
+
+            List<string> list = source.Select((IProperty column) => string.Format("{0}.[{1}]", "Source", column.GetColumnName())).ToList();
             if (BulkOperation.WillOutputGeneratedValues(mapping, options))
             {
                 list.Add(string.Format("1 as [{0}]", "Bulk_Identity"));
@@ -226,7 +204,7 @@ namespace EntityFramework.BulkOperations
             try
             {
                 string randomTableName2 = outputGeneratedValues ? BulkOperation.RandomTableName(entityMapping) : null;
-                List<PropertyMapping> entityProperties = outputGeneratedValues ? BulkOperation.GetPropertiesByOptions(entityMapping, options).ToList() : null;
+                IEnumerable<IProperty> entityProps = outputGeneratedValues ? BulkOperation.GetPropertiesByOptions(entityMapping, options) : null;
 
                 // List of SQL commands to be executed
                 string stagingTableCommand = BulkOperation.BuildStagingTableCommand(entityMapping, randomTableName, operation, options);
@@ -247,9 +225,9 @@ namespace EntityFramework.BulkOperations
                 // Perform merge operation
                 if (outputGeneratedValues)
                 {
-                    string outputTableCommand = BulkOperation.BuildOutputTableCommand(randomTableName2, entityMapping, entityProperties);
+                    string outputTableCommand = BulkOperation.BuildOutputTableCommand(randomTableName2, entityMapping, entityProps);
                     BulkOperation.ExecuteSqlCommand(dbContext, outputTableCommand);
-                    mergeCommand += BulkOperation.BuildMergeOutputSet(randomTableName2, entityProperties);
+                    mergeCommand += BulkOperation.BuildMergeOutputSet(randomTableName2, entityProps);
                 }
                 mergeCommand += BulkOperation.GetDropTableCommand(randomTableName);
                 int result = BulkOperation.ExecuteSqlCommand(dbContext, mergeCommand);
@@ -257,7 +235,7 @@ namespace EntityFramework.BulkOperations
                 // Load generated outputs
                 if (outputGeneratedValues)
                 {
-                    BulkOperation.LoadFromOutputTable(dbContext, randomTableName2, entityProperties, collection.ToList());
+                    BulkOperation.LoadFromOutputTable(dbContext, randomTableName2, entityProps, collection.ToList());
                 }
 
                 // Commit result
@@ -275,10 +253,10 @@ namespace EntityFramework.BulkOperations
             }
         }
 
-        private static void LoadFromOutputTable<TEntity>(DbContext context, string outputTableName, IEnumerable<PropertyMapping> propertyMappings, IList<TEntity> items)
+        private static void LoadFromOutputTable<TEntity>(DbContext context, string outputTableName, IEnumerable<IProperty> entityProps, IList<TEntity> items)
         {
-            IList<PropertyMapping> list = (propertyMappings as IList<PropertyMapping>) ?? propertyMappings.ToList();
-            IEnumerable<string> values = list.Select((PropertyMapping property) => property.ColumnName);
+            IList<IProperty> list = (entityProps as IList<IProperty>) ?? entityProps.ToList();
+            IEnumerable<string> values = list.Select((IProperty property) => property.GetColumnName());
 
             string command = string.Format("SELECT {0}, {1} FROM {2}", "Bulk_Identity", string.Join(", ", values), outputTableName);
             IDbCommand dbCommand = BulkOperation.ToDbCommand(context, command);
@@ -289,12 +267,12 @@ namespace EntityFramework.BulkOperations
                 while (dataReader.Read())
                 {
                     object obj = items.ElementAt((int)dataReader["Bulk_Identity"]);
-                    foreach (PropertyMapping item in list)
+                    foreach (IProperty item in list)
                     {
-                        PropertyInfo property2 = obj.GetType().GetProperty(item.PropertyName);
+                        PropertyInfo property2 = obj.GetType().GetProperty(item.Name);
                         if (property2 != null && property2.CanWrite)
                         {
-                            property2.SetValue(obj, dataReader[item.ColumnName], null);
+                            property2.SetValue(obj, dataReader[item.GetColumnName()], null);
                             continue;
                         }
                         throw new Exception("Field not existent");
@@ -306,60 +284,61 @@ namespace EntityFramework.BulkOperations
             dbCommand.ExecuteNonQuery();
         }
 
-        private static string BuildMergeOutputSet(string outputTableName, IEnumerable<PropertyMapping> properties)
+        private static string BuildMergeOutputSet(string outputTableName, IEnumerable<IProperty> properties)
         {
-            IList<PropertyMapping> source = (properties as IList<PropertyMapping>) ?? properties.ToList();
-            string text = string.Join(", ", source.Select((PropertyMapping property) => $"INSERTED.{property.ColumnName}"));
-            string text2 = string.Join(", ", source.Select((PropertyMapping property) => property.ColumnName));
+            IList<IProperty> source = (properties as IList<IProperty>) ?? properties.ToList();
+            string text = string.Join(", ", source.Select((IProperty property) => $"INSERTED.{property.GetColumnName()}"));
+            string text2 = string.Join(", ", source.Select((IProperty property) => property.GetColumnName()));
             return string.Format(" OUTPUT {0}.{1}, {2} INTO {3} ({4}, {5})", "Source", "Bulk_Identity", text, outputTableName, "Bulk_Identity", text2);
         }
 
-        private static string BuildOutputTableCommand(string tmpTablename, EntityMapping mapping, IEnumerable<PropertyMapping> propertyMappings)
+        private static string BuildOutputTableCommand(string tmpTablename, EntityMapping mapping, IEnumerable<IProperty> propertyMappings)
         {
-            return string.Format("SELECT TOP 0 1 as [{0}], {1} ", "Bulk_Identity", string.Join(", ", propertyMappings.Select((PropertyMapping property) => string.Format("{0}.[{1}]", "Source", property.ColumnName)))) + $"INTO {tmpTablename} FROM {mapping.FullTableName} AS A " + string.Format("LEFT JOIN {0} AS {1} ON 1 = 2", mapping.FullTableName, "Source");
+            return string.Format("SELECT TOP 0 1 as [{0}], {1} ", "Bulk_Identity", string.Join(", ", propertyMappings.Select((IProperty property) => string.Format("{0}.[{1}]", "Source", property.GetColumnName())))) + $"INTO {tmpTablename} FROM {mapping.FullTableName} AS A " + string.Format("LEFT JOIN {0} AS {1} ON 1 = 2", mapping.FullTableName, "Source");
         }
 
         private static void BulkInsertToTable<TEntity>(EntityMapping entityMapping, DbContext context, IList<TEntity> entities, string tableName, OperationType operationType, BulkOptions options) where TEntity : class
         {
-            List<PropertyMapping> list = BulkOperation.GetPropertiesByOperation(entityMapping, operationType).ToList();
-            if (BulkOperation.WillOutputGeneratedValues(entityMapping, options))
-            {
-                list.Add(new PropertyMapping
-                {
-                    ColumnName = "Bulk_Identity",
-                    PropertyName = "Bulk_Identity"
-                });
-            }
+            List<IProperty> props = BulkOperation.GetPropertiesByOperation(entityMapping, operationType).ToList();
+
             using (SqlBulkCopy sqlBulkCopy = new SqlBulkCopy((SqlConnection)context.Database.GetDbConnection(), SqlBulkCopyOptions.Default, (SqlTransaction)context.Database.CurrentTransaction?.GetDbTransaction()))
             {
-                foreach (PropertyMapping item in list)
+                foreach (IProperty prop in props)
                 {
-                    sqlBulkCopy.ColumnMappings.Add(item.ColumnName, item.ColumnName);
+                    sqlBulkCopy.ColumnMappings.Add(prop.GetColumnName(), prop.GetColumnName());
                 }
+
+                if (BulkOperation.WillOutputGeneratedValues(entityMapping, options))
+                {
+                    sqlBulkCopy.ColumnMappings.Add("Bulk_Identity", "Bulk_Identity");
+                }
+
                 sqlBulkCopy.BatchSize = 5000;
                 sqlBulkCopy.DestinationTableName = tableName;
                 sqlBulkCopy.BulkCopyTimeout = context.Database.GetCommandTimeout().Value;
                 ObjectReader reader = ObjectReader.Create(entities);
                 sqlBulkCopy.WriteToServer(reader);
-                // sqlBulkCopy.WriteToServer((IDataReader)DataReaderHelper.ToDataReader(entities, entityMapping, list));
             }
         }
 
-        private static IEnumerable<PropertyMapping> GetPropertiesByOptions(EntityMapping mapping, BulkOptions options)
+        private static IEnumerable<IProperty> GetPropertiesByOptions(EntityMapping mapping, BulkOptions options)
         {
+            IEnumerable<IProperty> outputProps = null;
+
             if (options.HasFlag(BulkOptions.OutputIdentity) && options.HasFlag(BulkOptions.OutputComputed))
             {
-                return mapping.Properties.Where((PropertyMapping property) => property.IsDbGenerated);
+                outputProps = mapping.EntityProperties.Where(v => v.IsPrimaryKey() && (v.ValueGenerated == ValueGenerated.OnAddOrUpdate || v.ValueGenerated == ValueGenerated.OnAddOrUpdate));
             }
-            if (options.HasFlag(BulkOptions.OutputIdentity))
+            else if (options.HasFlag(BulkOptions.OutputIdentity))
             {
-                return mapping.Properties.Where((PropertyMapping property) => property.IsPk && property.IsDbGenerated);
+                outputProps = mapping.EntityProperties.Where(v => v.IsPrimaryKey() && v.ValueGenerated == ValueGenerated.OnAdd);
             }
-            if (options.HasFlag(BulkOptions.OutputComputed))
+            else if (options.HasFlag(BulkOptions.OutputComputed))
             {
-                return mapping.Properties.Where((PropertyMapping property) => !property.IsPk && property.IsDbGenerated);
+                outputProps = mapping.EntityProperties.Where(v => v.IsPrimaryKey() && v.ValueGenerated == ValueGenerated.OnAddOrUpdate);
             }
-            return mapping.Properties;
+
+            return outputProps;
         }
 
         private static string GetDropTableCommand(string tableName)
@@ -367,25 +346,24 @@ namespace EntityFramework.BulkOperations
             return $"; DROP TABLE {tableName};";
         }
 
-        private static IEnumerable<PropertyMapping> GetPropertiesByOperation(EntityMapping mapping, OperationType operationType)
+        private static IEnumerable<IProperty> GetPropertiesByOperation(EntityMapping mapping, OperationType operationType)
         {
             switch (operationType)
             {
                 case OperationType.Delete:
-                    return mapping.Properties.Where((PropertyMapping propertyMapping) => propertyMapping.IsPk);
+                    return mapping.EntityProperties.Where(v => v.IsPrimaryKey());
                 case OperationType.Update:
-                    return from propertyMapping in mapping.Properties
-                           where !propertyMapping.IsHierarchyMapping
-                           where propertyMapping.IsPk || !propertyMapping.IsDbGenerated
-                           select propertyMapping;
+                    return mapping.EntityProperties.Where(v => v.IsPrimaryKey() || v.ValueGenerated == ValueGenerated.Never);
                 default:
-                    return mapping.Properties.Where((PropertyMapping propertyMapping) => propertyMapping.IsPk || !propertyMapping.IsDbGenerated);
+                    return mapping.EntityProperties;
             }
         }
 
         internal static bool WillOutputGeneratedValues(EntityMapping mapping, BulkOptions options)
         {
-            return (options.HasFlag(BulkOptions.OutputIdentity) && mapping.HasGeneratedKeys) || (options.HasFlag(BulkOptions.OutputComputed) && mapping.HasComputedColumns);
+            IEnumerable<IProperty> computedColumns = mapping.EntityProperties.Where(v => v.IsPrimaryKey() && v.ValueGenerated == ValueGenerated.OnAddOrUpdate);
+            IEnumerable<IProperty> generatedKeys = mapping.EntityProperties.Where(v => v.IsPrimaryKey() && v.ValueGenerated == ValueGenerated.OnAdd);
+            return ((options.HasFlag(BulkOptions.OutputIdentity) && generatedKeys.Any()) || (options.HasFlag(BulkOptions.OutputComputed) && computedColumns.Any()));
         }
     }
 }
