@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EntityFramework.BulkExtensions.Commons.Mapping
+namespace EntityFramework.BulkOperations
 {
     public class EntityMapping
     {

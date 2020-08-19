@@ -1,4 +1,4 @@
-﻿namespace EntityFramework.BulkExtensions.Commons.Helpers
+﻿namespace EntityFramework.BulkOperations
 {
     internal enum OperationType
     {

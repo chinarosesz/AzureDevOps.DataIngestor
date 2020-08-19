@@ -1,6 +1,4 @@
-﻿using EntityFramework.BulkExtensions.Commons.Helpers;
-using EntityFramework.BulkExtensions.Commons.Mapping;
-using FastMember;
+﻿using FastMember;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -10,7 +8,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace EntityFramework.BulkOperations

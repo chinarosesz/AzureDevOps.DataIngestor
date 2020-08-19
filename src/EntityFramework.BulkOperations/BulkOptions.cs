@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace EntityFramework.BulkExtensions.Commons.Helpers
+namespace EntityFramework.BulkOperations
 {
     [Flags]
     public enum BulkOptions
