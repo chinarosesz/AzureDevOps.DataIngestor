@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace EntityFramework.BulkOperations
@@ -55,35 +56,19 @@ namespace EntityFramework.BulkOperations
             return commitedResult;
         }
 
-        private static EntityMapping GetMapping<TEntity>(DbContext context) where TEntity : class
-        {
-            IEntityType entityType = context.Model.FindEntityType(typeof(TEntity));
-            EntityMapping entityMapping = new EntityMapping(entityType);
-            return entityMapping;
-        }
-
         private static string RandomTableName(EntityMapping mapping)
         {
             string randomTableGuid = Guid.NewGuid().ToString().Substring(0, 6);
             return $"[_{mapping.TableName}_{randomTableGuid}]";
         }
 
-        private static int ExecuteSqlCommand(DbContext context, string command)
+        private static int ExecuteSqlCommandNonQuery(DbContext context, string command)
         {
             IDbCommand sqlCommand = context.Database.GetDbConnection().CreateCommand();
             sqlCommand.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
             sqlCommand.CommandTimeout = context.Database.GetCommandTimeout().Value;
             sqlCommand.CommandText = command;
             return sqlCommand.ExecuteNonQuery();
-        }
-
-        private static IDbCommand ToDbCommand(DbContext context, string command)
-        {
-            IDbCommand sqlCommand = context.Database.GetDbConnection().CreateCommand();
-            sqlCommand.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
-            sqlCommand.CommandTimeout = context.Database.GetCommandTimeout().Value;
-            sqlCommand.CommandText = command;
-            return sqlCommand;
         }
 
         private static string PrimaryKeysComparator(EntityMapping mapping)
@@ -175,6 +160,7 @@ namespace EntityFramework.BulkOperations
         private static string BuildStagingTableCommand(EntityMapping mapping, string tableName, OperationType operationType, BulkOptions options)
         {
             List<IProperty> source = BulkOperation.GetPropertiesByOperation(mapping, operationType).ToList();
+
             if (source.All((IProperty s) => s.IsPrimaryKey() && s.ValueGenerated == ValueGenerated.OnAddOrUpdate) && operationType == OperationType.Update)
             {
                 return null;
@@ -189,9 +175,11 @@ namespace EntityFramework.BulkOperations
             return $"SELECT TOP 0 {arg} INTO {tableName} FROM {mapping.FullTableName} AS A " + string.Format("LEFT JOIN {0} AS {1} ON 1 = 2", mapping.FullTableName, "Source");
         }
 
-        private static int CommitTransaction<TEntity>(DbContext dbContext, IEnumerable<TEntity> collection, OperationType operation, BulkOptions options = BulkOptions.Default) where TEntity : class
+        private static int CommitTransaction<TEntity>(DbContext context, IEnumerable<TEntity> collection, OperationType operation, BulkOptions options = BulkOptions.Default) where TEntity : class
         {           
-            EntityMapping entityMapping = GetMapping<TEntity>(dbContext);
+            IEntityType entityType = context.Model.FindEntityType(typeof(TEntity));
+            EntityMapping entityMapping = new EntityMapping(entityType);
+
             string randomTableName = BulkOperation.RandomTableName(entityMapping);
             bool outputGeneratedValues = BulkOperation.WillOutputGeneratedValues(entityMapping, options);
 
@@ -213,12 +201,12 @@ namespace EntityFramework.BulkOperations
                 // Build staging table command and insert into table. If nothing was constructed roll back and return
                 if (!string.IsNullOrEmpty(stagingTableCommand))
                 {
-                    BulkOperation.ExecuteSqlCommand(dbContext, stagingTableCommand);
-                    BulkOperation.BulkInsertToTable(entityMapping, dbContext, collection.ToList(), randomTableName, operation, options);
+                    BulkOperation.ExecuteSqlCommandNonQuery(context, stagingTableCommand);
+                    BulkOperation.BulkInsertToTable(entityMapping, context, collection.ToList(), randomTableName, operation, options);
                 }
                 else
                 {
-                    dbContext.Database.CurrentTransaction?.GetDbTransaction().Rollback();
+                    context.Database.CurrentTransaction?.GetDbTransaction().Rollback();
                     return 0;
                 }
                 
@@ -226,29 +214,29 @@ namespace EntityFramework.BulkOperations
                 if (outputGeneratedValues)
                 {
                     string outputTableCommand = BulkOperation.BuildOutputTableCommand(randomTableName2, entityMapping, entityProps);
-                    BulkOperation.ExecuteSqlCommand(dbContext, outputTableCommand);
+                    BulkOperation.ExecuteSqlCommandNonQuery(context, outputTableCommand);
                     mergeCommand += BulkOperation.BuildMergeOutputSet(randomTableName2, entityProps);
                 }
                 mergeCommand += BulkOperation.GetDropTableCommand(randomTableName);
-                int result = BulkOperation.ExecuteSqlCommand(dbContext, mergeCommand);
+                int result = BulkOperation.ExecuteSqlCommandNonQuery(context, mergeCommand);
 
                 // Load generated outputs
                 if (outputGeneratedValues)
                 {
-                    BulkOperation.LoadFromOutputTable(dbContext, randomTableName2, entityProps, collection.ToList());
+                    BulkOperation.LoadFromOutputTable(context, randomTableName2, entityProps, collection.ToList());
                 }
 
                 // Commit result
-                if (dbContext.Database.CurrentTransaction == null)
+                if (context.Database.CurrentTransaction == null)
                 {
-                    dbContext.Database.GetDbConnection().BeginTransaction().Commit();
+                    context.Database.GetDbConnection().BeginTransaction().Commit();
                 }
 
                 return result;
             }
             catch (Exception)
             {
-                dbContext.Database.CurrentTransaction?.GetDbTransaction().Rollback();
+                context.Database.CurrentTransaction?.GetDbTransaction().Rollback();
                 throw;
             }
         }
@@ -258,9 +246,11 @@ namespace EntityFramework.BulkOperations
             IList<IProperty> list = (entityProps as IList<IProperty>) ?? entityProps.ToList();
             IEnumerable<string> values = list.Select((IProperty property) => property.GetColumnName());
 
-            string command = string.Format("SELECT {0}, {1} FROM {2}", "Bulk_Identity", string.Join(", ", values), outputTableName);
-            IDbCommand dbCommand = BulkOperation.ToDbCommand(context, command);
-            IDataReader reader = dbCommand.ExecuteReader();
+            IDbCommand sqlCommand = context.Database.GetDbConnection().CreateCommand();
+            sqlCommand.Transaction = context.Database.CurrentTransaction?.GetDbTransaction();
+            sqlCommand.CommandTimeout = context.Database.GetCommandTimeout().Value;
+            sqlCommand.CommandText = string.Format("SELECT {0}, {1} FROM {2}", "Bulk_Identity", string.Join(", ", values), outputTableName);
+            IDataReader reader = sqlCommand.ExecuteReader();
 
             using (IDataReader dataReader = reader)
             {
@@ -279,9 +269,8 @@ namespace EntityFramework.BulkOperations
                     }
                 }
             }
-            command = BulkOperation.GetDropTableCommand(outputTableName);
-            dbCommand = BulkOperation.ToDbCommand(context, command);
-            dbCommand.ExecuteNonQuery();
+            string command = BulkOperation.GetDropTableCommand(outputTableName);
+            BulkOperation.ExecuteSqlCommandNonQuery(context, command);
         }
 
         private static string BuildMergeOutputSet(string outputTableName, IEnumerable<IProperty> properties)
@@ -348,18 +337,17 @@ namespace EntityFramework.BulkOperations
 
         private static IEnumerable<IProperty> GetPropertiesByOperation(EntityMapping mapping, OperationType operationType)
         {
-            switch (operationType)
+            if (operationType == OperationType.Delete)
             {
-                case OperationType.Delete:
-                    return mapping.EntityProperties.Where(v => v.IsPrimaryKey());
-                case OperationType.Update:
-                    return mapping.EntityProperties.Where(v => v.IsPrimaryKey() || v.ValueGenerated == ValueGenerated.Never);
-                default:
-                    return mapping.EntityProperties;
+                return mapping.EntityProperties.Where(v => v.IsPrimaryKey());
+            }
+            else
+            {
+                return mapping.EntityProperties;
             }
         }
 
-        internal static bool WillOutputGeneratedValues(EntityMapping mapping, BulkOptions options)
+        private static bool WillOutputGeneratedValues(EntityMapping mapping, BulkOptions options)
         {
             IEnumerable<IProperty> computedColumns = mapping.EntityProperties.Where(v => v.IsPrimaryKey() && v.ValueGenerated == ValueGenerated.OnAddOrUpdate);
             IEnumerable<IProperty> generatedKeys = mapping.EntityProperties.Where(v => v.IsPrimaryKey() && v.ValueGenerated == ValueGenerated.OnAdd);
