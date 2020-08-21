@@ -7,8 +7,6 @@ using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.WebApi;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOpsDataCollector.Core.Collectors
@@ -124,13 +122,12 @@ namespace AzureDevOpsDataCollector.Core.Collectors
                 // todo: Need to parse yaml file here
             }
 
-            this.logger.LogInformation("Ingesting build definitions");
             using VssDbContext dbContext = new VssDbContext(this.sqlServerConnectionString, logger);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
-            dbContext.BulkInsertOrUpdate(buildDefinitionEntities);
-            dbContext.BulkInsertOrUpdate(buildDefinitionStepEntities);
+            int buildDefinitionEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionEntities);
+            int buildDefinitionStepEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionStepEntities);
             transaction.Commit();
-            this.logger.LogInformation($"Updated {buildDefinitionEntities.Count} build definitions and {buildDefinitionStepEntities.Count} build definition steps");
+            this.logger.LogInformation($"Completed operation InsertOrUpdate {buildDefinitionEntitiesResult} build definitions and {buildDefinitionStepEntitiesResult} build definition steps");
         }
 
         private string GetPhaseType(Phase phase)

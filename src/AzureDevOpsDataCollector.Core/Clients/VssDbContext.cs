@@ -26,7 +26,7 @@ namespace AzureDevOpsDataCollector.Core.Clients
             this.logger = logger;
             this.connectionString = connectionString;
 
-            this.logger.LogInformation($"Migrate database {this.Database.GetDbConnection().Database} from server {this.Database.GetDbConnection().DataSource}");
+            this.logger.LogInformation($"Create a new database context using database {this.Database.GetDbConnection().Database} from server {this.Database.GetDbConnection().DataSource}");
             this.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
             this.Database.Migrate();
         }

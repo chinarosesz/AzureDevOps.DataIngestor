@@ -66,9 +66,10 @@ namespace AzureDevOpsDataCollector.Core.Collectors
 
             using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
             using IDbContextTransaction transaction = context.Database.BeginTransaction();
-            context.BulkDelete(context.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
-            context.BulkInsert(entities);
+            int deleteResult = context.BulkDelete(context.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
+            int insertResult = context.BulkInsert(entities);
             transaction.Commit();
+            this.logger.LogInformation($"Successfully deleted {deleteResult} and inserted {insertResult} records");
         }
     }
 }

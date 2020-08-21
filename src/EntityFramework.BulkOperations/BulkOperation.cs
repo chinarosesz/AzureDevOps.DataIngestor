@@ -68,90 +68,97 @@ namespace EntityFramework.BulkOperations
             return sqlCommand.ExecuteNonQuery();
         }
 
-        private static string PrimaryKeysComparator(EntityMapping mapping)
+        private static string BuildMergeCommand2(EntityMapping entity, string tempTableName, OperationType operationType)
         {
-            List<IProperty> primaryKeys = mapping.PrimaryKeyProperties.ToList();
-            StringBuilder stringBuilder = new StringBuilder();
-            IProperty firstPrimaryKey = primaryKeys.First();
-
-            stringBuilder.Append(string.Format("ON [{0}].[{1}] = [{2}].[{3}] ", "Target", firstPrimaryKey.GetColumnName(), "Source", firstPrimaryKey.GetColumnName()));
-            
-            primaryKeys.Remove(firstPrimaryKey);
-
-            if (primaryKeys.Any())
+            // Example output:
+            // MERGE INTO [VssBuildDefinition] WITH (HOLDLOCK) AS Target USING [_VssBuildDefinition_02da3b] AS Source ON [Target].[Id] = [Source].[Id] AND [Target].[ProjectId] = [Source].[ProjectId] 
+            string mergeCommand = $"MERGE INTO {entity.FullTableName} WITH (HOLDLOCK) AS Target USING {tempTableName} AS SOURCE ";
+            bool isFirst = true;
+            foreach (IProperty property in entity.PrimaryKeyProperties)
             {
-                foreach (IProperty item in primaryKeys)
+                if (isFirst)
                 {
-                    stringBuilder.Append(string.Format("AND [{0}].[{1}] = [{2}].[{3}]", "Target", item.GetColumnName(), "Source", item.GetColumnName()));
+                    mergeCommand += $"ON [Target].[{property.Name}] = [Source].[{property.Name}] ";
+                    isFirst = false;
+                }
+                else
+                {
+                    mergeCommand += $"AND [Target].[{property.Name}] = [Source].[{property.Name}] ";
                 }
             }
-            return stringBuilder.ToString();
-        }
 
-        private static string BuildMergeInsertSet(EntityMapping mapping)
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            List<string> list = new List<string>();
-            List<string> list2 = new List<string>();
-            //List<IProperty> list3 = mapping.EntityProperties.Where((IProperty entityProp) => entityProp.ValueGenerated != ValueGenerated.Never).ToList();
-            List<IProperty> list3 = mapping.EntityProperties.ToList();
-            stringBuilder.Append(" WHEN NOT MATCHED BY TARGET THEN INSERT ");
-            if (list3.Any())
+            // Example output: 
+            // WHEN MATCHED THEN UPDATE SET[Target].[Id] = [Source].[Id], [Target].[ProjectId] = [Source].[ProjectId], [Target].[CreatedDate] = [Source].[CreatedDate]
+            isFirst = true;
+            string updateCommand = string.Empty;
+            foreach (IProperty property in entity.EntityProperties)
             {
-                foreach (IProperty item in list3)
+                if (isFirst)
                 {
-                    list.Add($"[{item.GetColumnName()}]");
-                    list2.Add(string.Format("[{0}].[{1}]", "Source", item.GetColumnName()));
+                    updateCommand += $"WHEN MATCHED THEN UPDATE SET [Target].[{property.Name}] = [Source].[{property.Name}]";
+                    isFirst = false;
                 }
-                stringBuilder.Append(string.Format("({0}) VALUES ({1})", string.Join(", ", list), string.Join(", ", list2)));
-            }
-            else
-            {
-                stringBuilder.Append("DEFAULT VALUES");
-            }
-            return stringBuilder.ToString();
-        }
-
-        private static string BuildMergeUpdateSet(EntityMapping mapping)
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            List<string> list = new List<string>();
-            List<IProperty> list2 = (from entityProp in mapping.EntityProperties
-                                           where !entityProp.IsPrimaryKey()
-                                           where entityProp.ValueGenerated != ValueGenerated.Never
-                                           select entityProp).ToList();
-            if (list2.Any())
-            {
-                stringBuilder.Append("WHEN MATCHED THEN UPDATE SET ");
-                foreach (IProperty item in list2)
+                else
                 {
-                    list.Add(string.Format("[{0}].[{1}] = [{2}].[{3}]", "Target", item.GetColumnName(), "Source", item.GetColumnName()));
+                    updateCommand += $", [Target].[{property.Name}] = [Source].[{property.Name}]";
                 }
-                stringBuilder.Append(string.Join(", ", list) + " ");
             }
-            return stringBuilder.ToString();
-        }
 
-        private static string BuildMergeCommand(EntityMapping entityMapping, string tmpTableName, OperationType operationType)
-        {
-            string text = string.Format("MERGE INTO {0} WITH (HOLDLOCK) AS {1} USING {2} AS {3} ", entityMapping.FullTableName, "Target", tmpTableName, "Source") + $"{BulkOperation.PrimaryKeysComparator(entityMapping)} ";
-            switch (operationType)
+            // Example output: 
+            // WHEN NOT MATCHED BY TARGET THEN INSERT ([Id], [ProjectId], [CreatedDate]) VALUES ([Source].[Id], [Source].[ProjectId], [Source].[CreatedDate]
+            isFirst = true;
+            string insertCommand = string.Empty;
+            foreach (IProperty property in entity.EntityProperties)
             {
-                case OperationType.Insert:
-                    text += BulkOperation.BuildMergeInsertSet(entityMapping);
-                    break;
-                case OperationType.Update:
-                    text += BulkOperation.BuildMergeUpdateSet(entityMapping);
-                    break;
-                case OperationType.InsertOrUpdate:
-                    text += BulkOperation.BuildMergeUpdateSet(entityMapping);
-                    text += BulkOperation.BuildMergeInsertSet(entityMapping);
-                    break;
-                case OperationType.Delete:
-                    text += "WHEN MATCHED THEN DELETE";
-                    break;
+                if (isFirst)
+                {
+                    insertCommand += $" WHEN NOT MATCHED BY TARGET THEN INSERT ([{property.Name}]";
+                    isFirst = false;
+                }
+                else
+                {
+                    insertCommand += $", [{property.Name}]";
+                }
             }
-            return text;
+            isFirst = true;
+            foreach (IProperty property in entity.EntityProperties)
+            {
+                if (isFirst)
+                {
+                    insertCommand += $") VALUES ([Source].[{property.Name}]";
+                    isFirst = false;
+                }
+                else
+                {
+                    insertCommand += $", [Source].[{property.Name}]";
+                }
+            }
+            insertCommand += ") ";
+
+            // Example output:
+            // WHEN MATCHED THEN DELETE
+            string deleteCommand = "WHEN MATCHED THEN DELETE";
+
+            // Finally construct merge operation based action type!
+            string outCommand = string.Empty;
+            if (operationType == OperationType.Insert)
+            {
+                outCommand = mergeCommand + insertCommand;
+            }
+            else if (operationType == OperationType.Update)
+            {
+                outCommand = mergeCommand + updateCommand;
+            }
+            else if (operationType == OperationType.InsertOrUpdate)
+            {
+                outCommand = mergeCommand + updateCommand + insertCommand;
+            }
+            else if (operationType == OperationType.Delete)
+            {
+                outCommand = mergeCommand + deleteCommand;
+            }
+
+            return outCommand;
         }
 
         private static string BuildStagingTableCommand(EntityMapping mapping, string tableName, OperationType operationType, BulkOptions options)
@@ -193,7 +200,7 @@ namespace EntityFramework.BulkOperations
 
                 // List of SQL commands to be executed
                 string stagingTableCommand = BulkOperation.BuildStagingTableCommand(entityMapping, randomTableName, operation, options);
-                string mergeCommand = BulkOperation.BuildMergeCommand(entityMapping, randomTableName, operation);
+                string mergeCommand = BulkOperation.BuildMergeCommand2(entityMapping, randomTableName, operation);
 
                 // Build staging table command and insert into table. If nothing was constructed roll back and return
                 if (!string.IsNullOrEmpty(stagingTableCommand))
