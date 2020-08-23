@@ -13,15 +13,15 @@ namespace EntityFramework.BulkOperations
 {
     public static class BulkOperationHelper
     {
-        internal static int CommitTransaction<TEntity>(DbContext context, IEnumerable<TEntity> collection, OperationType operation) where TEntity : class
+        internal static int CommitTransaction<TEntity>(DbContext context, IEnumerable<TEntity> entities, OperationType operation) where TEntity : class
         {
             IEntityType entityType = context.Model.FindEntityType(typeof(TEntity));
-            EntityMapping entityMapping = new EntityMapping(entityType);
+            EntityInfo entityMapping = new EntityInfo(entityType);
 
             // No entities to commit
-            if (!collection.Any())
+            if (!entities.Any())
             {
-                return collection.Count();
+                return entities.Count();
             }
 
             try
@@ -34,7 +34,7 @@ namespace EntityFramework.BulkOperations
                 if (!string.IsNullOrEmpty(stagingTableCommand))
                 {
                     BulkOperationHelper.ExecuteSqlCommandNonQuery(context, stagingTableCommand);
-                    BulkOperationHelper.BulkInsertToTable(entityMapping, context, collection.ToList(), randomTableName, operation);
+                    BulkOperationHelper.BulkInsertToTable(entityMapping, context, entities.ToList(), randomTableName, operation);
                 }
                 else
                 {
@@ -59,13 +59,13 @@ namespace EntityFramework.BulkOperations
             }
         }
 
-        private static string BuildMergeCommand(EntityMapping entity, string tempTableName, OperationType operationType)
+        private static string BuildMergeCommand(EntityInfo entityInfo, string tempTableName, OperationType operationType)
         {
             // Merge command looks like:
             // MERGE INTO [VssBuildDefinition] WITH (HOLDLOCK) AS Target USING [_VssBuildDefinition_02da3b] AS Source ON [Target].[Id] = [Source].[Id] AND [Target].[ProjectId] = [Source].[ProjectId] 
-            StringBuilder mergeCommand = new StringBuilder($"MERGE INTO {entity.FullTableName} WITH (HOLDLOCK) AS Target USING {tempTableName} AS SOURCE ");
+            StringBuilder mergeCommand = new StringBuilder($"MERGE INTO {entityInfo.FullTableName} WITH (HOLDLOCK) AS Target USING {tempTableName} AS SOURCE ");
             bool isFirst = true;
-            foreach (IProperty property in entity.PrimaryKeyProperties)
+            foreach (IProperty property in entityInfo.PrimaryKeyProperties)
             {
                 if (isFirst)
                 {
@@ -82,7 +82,7 @@ namespace EntityFramework.BulkOperations
             // WHEN MATCHED THEN UPDATE SET[Target].[Id] = [Source].[Id], [Target].[ProjectId] = [Source].[ProjectId], [Target].[CreatedDate] = [Source].[CreatedDate]
             isFirst = true;
             StringBuilder updateCommand = new StringBuilder();
-            foreach (IProperty property in entity.EntityProperties)
+            foreach (IProperty property in entityInfo.EntityProperties)
             {
                 if (isFirst)
                 {
@@ -99,7 +99,7 @@ namespace EntityFramework.BulkOperations
             // WHEN NOT MATCHED BY TARGET THEN INSERT ([Id], [ProjectId], [CreatedDate]) VALUES ([Source].[Id], [Source].[ProjectId], [Source].[CreatedDate]
             isFirst = true;
             StringBuilder insertCommand = new StringBuilder();
-            foreach (IProperty property in entity.EntityProperties)
+            foreach (IProperty property in entityInfo.EntityProperties)
             {
                 if (isFirst)
                 {
@@ -112,7 +112,7 @@ namespace EntityFramework.BulkOperations
                 }
             }
             isFirst = true;
-            foreach (IProperty property in entity.EntityProperties)
+            foreach (IProperty property in entityInfo.EntityProperties)
             {
                 if (isFirst)
                 {
@@ -160,12 +160,6 @@ namespace EntityFramework.BulkOperations
             return outCommand.ToString();
         }
 
-        private static string RandomTableName(EntityMapping mapping)
-        {
-            string randomTableGuid = Guid.NewGuid().ToString().Substring(0, 6);
-            return $"[_{mapping.TableName}_{randomTableGuid}]";
-        }
-
         private static int ExecuteSqlCommandNonQuery(DbContext context, string command)
         {
             IDbCommand sqlCommand = context.Database.GetDbConnection().CreateCommand();
@@ -179,12 +173,12 @@ namespace EntityFramework.BulkOperations
         /// Output command looks like below after command is fully constructed
         /// SELECT TOP 0 Source.[RepoId] INTO [_VssRepository_f505b2] FROM [VssRepository] AS A LEFT JOIN [VssRepository] AS Source ON 1 = 2
         /// </summary>
-        private static string BuildStagingTableCommand(EntityMapping mapping, string tableName, OperationType operationType)
+        private static string BuildStagingTableCommand(EntityInfo entityInfo, string tableName, OperationType operationType)
         {
-            IEnumerable<IProperty> source = BulkOperationHelper.GetPropertiesByOperation(mapping, operationType);
+            IEnumerable<IProperty> source = operationType == OperationType.Delete ? entityInfo.EntityProperties : entityInfo.PrimaryKeyProperties;
             StringBuilder stagingTableCommand = new StringBuilder();
             bool isFirst = true;
-
+            
             stagingTableCommand.Append($"SELECT TOP 0 ");
             foreach (IProperty prop in source)
             {
@@ -198,14 +192,14 @@ namespace EntityFramework.BulkOperations
                     stagingTableCommand.Append($", Source.[{prop.GetColumnName()}]");
                 }
             }
-            stagingTableCommand.Append($" INTO {tableName} FROM {mapping.FullTableName} AS A LEFT JOIN {mapping.FullTableName} AS Source ON 1 = 2");
+            stagingTableCommand.Append($" INTO {tableName} FROM {entityInfo.FullTableName} AS A LEFT JOIN {entityInfo.FullTableName} AS Source ON 1 = 2");
 
             return stagingTableCommand.ToString();
         }
 
-        private static void BulkInsertToTable<TEntity>(EntityMapping entityMapping, DbContext context, IEnumerable<TEntity> entities, string tableName, OperationType operationType) where TEntity : class
+        private static void BulkInsertToTable<TEntity>(EntityInfo entityInfo, DbContext context, IEnumerable<TEntity> entities, string tableName, OperationType operationType) where TEntity : class
         {
-            IEnumerable<IProperty> props = BulkOperationHelper.GetPropertiesByOperation(entityMapping, operationType);
+            IEnumerable<IProperty> props = operationType == OperationType.Delete ? entityInfo.EntityProperties : entityInfo.PrimaryKeyProperties;
 
             using SqlBulkCopy sqlBulkCopy = new SqlBulkCopy((SqlConnection)context.Database.GetDbConnection(), SqlBulkCopyOptions.Default, (SqlTransaction)context.Database.CurrentTransaction?.GetDbTransaction());
             foreach (IProperty prop in props)
@@ -218,17 +212,5 @@ namespace EntityFramework.BulkOperations
             ObjectReader reader = ObjectReader.Create(entities);
             sqlBulkCopy.WriteToServer(reader);
         }  
-
-        private static IEnumerable<IProperty> GetPropertiesByOperation(EntityMapping mapping, OperationType operationType)
-        {
-            if (operationType == OperationType.Delete)
-            {
-                return mapping.EntityProperties.Where(v => v.IsPrimaryKey());
-            }
-            else
-            {
-                return mapping.EntityProperties;
-            }
-        }
     }
 }
