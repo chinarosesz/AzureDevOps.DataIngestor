@@ -1,5 +1,5 @@
-# Azure DevOps Data Collector
-Collect Azure DevOps data by calling Azure DevOps SDK which calls into their REST API's. The following collectors are implemented:
+# Azure DevOps Data Ingestor
+Collect Azure DevOps data by calling Azure DevOps SDK which calls into their REST API's. The following ingestors are implemented:
 * Project
 * Repository
 * PullRequest
@@ -18,9 +18,9 @@ Data is collected and inserted directly into SQL Server. List of represented in 
 
 # Sample Usage
 Collects project from Azure DevOps
-* <code>AzureDevOpsDataCollector.Console.exe project --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+* <code>AzureDevOps.Ingestor.exe project --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
 
 Collects build definition from Azure DevOps given a list of projects or for all projects
-* <code>AzureDevOpsDataCollector.Console.exe builddefinition --account myaccount --projects project1:project2 --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
-* <code>AzureDevOpsDataCollector.Console.exe builddefinition --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+* <code>AzureDevOps.Ingestor.exe builddefinition --account myaccount --projects project1:project2 --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+* <code>AzureDevOps.Ingestor.exe builddefinition --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
 

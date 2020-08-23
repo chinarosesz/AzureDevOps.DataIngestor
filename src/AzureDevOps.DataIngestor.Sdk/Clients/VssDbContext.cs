@@ -1,0 +1,67 @@
+﻿using AzureDevOps.DataIngestor.Sdk.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
+
+namespace AzureDevOps.DataIngestor.Sdk.Clients
+{
+    public class VssDbContext : DbContext
+    {
+        private readonly string connectionString;
+        private readonly ILogger logger;
+
+        public DbSet<VssRepositoryEntity> VssRepositoryEntities { get; set; }
+        public DbSet<VssProjectEntity> VssProjectEntities { get; set; }
+        public DbSet<VssPullRequestEntity> VssPullRequestEntities { get; set; }
+        public DbSet<VssBuildDefinitionEntity> VssBuildDefinitionEntities { get; set; }
+        public DbSet<VssBuildDefinitionStepEntity> VssBuildDefinitionStepEntities { get; set; }
+        public DbSet<VssPullRequestWatermarkEntity> VssPullRequestWatermarkEntities { get; set; }
+
+        public VssDbContext() : base() 
+        { 
+        }
+
+        public VssDbContext(string connectionString, ILogger logger) : base()
+        {
+            this.logger = logger;
+            this.connectionString = connectionString;
+
+            this.logger.LogInformation($"Create a new database context using database {this.Database.GetDbConnection().Database} from server {this.Database.GetDbConnection().DataSource}");
+            this.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
+            this.Database.Migrate();
+        }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (!optionsBuilder.IsConfigured && this.connectionString == null)
+            {
+                optionsBuilder.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOps");
+            }
+            else if (!optionsBuilder.IsConfigured && this.connectionString != null)
+            {
+                optionsBuilder.UseSqlServer(this.connectionString);
+            }
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<VssProjectEntity>()
+                .HasIndex(p => p.Organization).IsClustered(false);
+
+            modelBuilder.Entity<VssRepositoryEntity>()
+                .HasIndex(p => p.Organization).IsClustered(false);
+
+            modelBuilder.Entity<VssPullRequestEntity>()
+                .HasKey(p => new { p.PullRequestId, p.RepositoryId });
+
+            modelBuilder.Entity<VssBuildDefinitionEntity>()
+                .HasKey(p => new { p.Id, p.ProjectId });
+
+            modelBuilder.Entity<VssBuildDefinitionStepEntity>()
+                .HasKey(p => new { p.ProjectId, p.BuildDefinitionId, p.StepNumber });
+
+            modelBuilder.Entity<VssPullRequestWatermarkEntity>()
+                .HasKey(p => new { p.PullRequestStatus, p.ProjectId });
+        }
+    }
+}
