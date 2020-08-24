@@ -18,13 +18,13 @@ jobs:
       with:
         dotnet-version: 3.1.101
     - name: Restore
-      run: dotnet restore src\AzureDevOpsDataCollector.sln
+      run: dotnet restore src\AzureDevOps.DataIngestor.sln
     - name: Build
-      run: dotnet build --configuration Release --no-restore src\AzureDevOpsDataCollector.sln
+      run: dotnet build --configuration Release --no-restore src\AzureDevOps.DataIngestor.sln
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: AzureDevOpsDataCollector
-        path: '**\bin\**\AzureDevOpsDataCollector.*'
+        name: AzureDevOps.DataIngestor
+        path: '**\bin\**\AzureDevOps.DataIngestor.*'
     - name: Publish Nuget Package
-      run: dotnet nuget push src\AzureDevOpsDataCollector.Console\bin\Release\*.nupkg -k ${{ secrets.NUGETPUSHONLYAPIKEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push src\AzureDevOps.DataIngestor\bin\Release\*.nupkg -k ${{ secrets.NUGETPUSHONLYAPIKEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
