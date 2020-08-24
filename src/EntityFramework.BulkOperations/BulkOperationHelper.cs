@@ -15,45 +15,56 @@ namespace EntityFramework.BulkOperations
     {
         internal static int CommitTransaction<TEntity>(DbContext context, IEnumerable<TEntity> entities, OperationType operation) where TEntity : class
         {
+            // Retrieve entity type
             IEntityType entityType = context.Model.FindEntityType(typeof(TEntity));
             EntityInfo entityMapping = new EntityInfo(entityType);
+
+            // Sample random table looks like this [_VssBuildDefinition_02da3b]
+            string randomTableName = $"[_{entityMapping.TableName}_{Guid.NewGuid().ToString().Substring(0, 6)}]";
+
+            // Build staging table sql command
+            string stagingTableCommand = BulkOperationHelper.BuildStagingTableCommand(entityMapping, randomTableName, operation);
+
+            // Open connection if it's closed
+            if (context.Database.GetDbConnection().State == ConnectionState.Closed)
+            {
+                context.Database.GetDbConnection().Open();
+            }
+
+            // If caller does not specify a transaction we create an internal transaction
+            IDbContextTransaction internalTrasaction = null;
+            if (context.Database.CurrentTransaction == null)
+            {
+                internalTrasaction = context.Database.BeginTransaction();
+            }
 
             // No entities to commit
             if (!entities.Any())
             {
-                return entities.Count();
+                return 0;
             }
 
+            // Final step is to create staging table and merge data into final table
             try
             {
-                // Sample random table looks like this [_VssBuildDefinition_02da3b]
-                string randomTableName = $"[_{entityMapping.TableName}_{Guid.NewGuid().ToString().Substring(0, 6)}]";
+                // Create staging table and insert data into staging table
+                BulkOperationHelper.ExecuteSqlCommandNonQuery(context, stagingTableCommand);
+                BulkOperationHelper.BulkInsertToTable(entityMapping, context, entities.ToList(), randomTableName, operation);
 
-                // Commit staging table command
-                string stagingTableCommand = BulkOperationHelper.BuildStagingTableCommand(entityMapping, randomTableName, operation);
-                if (!string.IsNullOrEmpty(stagingTableCommand))
-                {
-                    BulkOperationHelper.ExecuteSqlCommandNonQuery(context, stagingTableCommand);
-                    BulkOperationHelper.BulkInsertToTable(entityMapping, context, entities.ToList(), randomTableName, operation);
-                }
-                else
-                {
-                    context.Database.CurrentTransaction?.GetDbTransaction().Rollback();
-                    return 0;
-                }
-
-                // Commit merge command
+                // Merge staging table data into final table and commit
                 string mergeCommand = BulkOperationHelper.BuildMergeCommand(entityMapping, randomTableName, operation);
                 int result = BulkOperationHelper.ExecuteSqlCommandNonQuery(context, mergeCommand);
-                if (context.Database.CurrentTransaction == null)
-                {
-                    context.Database.GetDbConnection().BeginTransaction().Commit();
-                }
+                
+                // Only commit internal transaction and let caller's transaction commit on their own
+                internalTrasaction?.Commit();
 
+                // Return the number of records affected
                 return result;
             }
             catch (Exception)
             {
+                // If anything goes wrong, we roll back to undo the operation
+                internalTrasaction?.Rollback();
                 context.Database.CurrentTransaction?.GetDbTransaction().Rollback();
                 throw;
             }
@@ -175,7 +186,7 @@ namespace EntityFramework.BulkOperations
         /// </summary>
         private static string BuildStagingTableCommand(EntityInfo entityInfo, string tableName, OperationType operationType)
         {
-            IEnumerable<IProperty> source = operationType == OperationType.Delete ? entityInfo.EntityProperties : entityInfo.PrimaryKeyProperties;
+            IEnumerable<IProperty> source = operationType == OperationType.Delete ? entityInfo.PrimaryKeyProperties : entityInfo.EntityProperties;
             StringBuilder stagingTableCommand = new StringBuilder();
             bool isFirst = true;
             
@@ -184,12 +195,12 @@ namespace EntityFramework.BulkOperations
             {
                 if (isFirst)
                 {
-                    stagingTableCommand.Append($"Source.[{prop.GetColumnName()}]");
+                    stagingTableCommand.Append($"[Source].[{prop.GetColumnName()}]");
                     isFirst = false;
                 }
                 else
                 {
-                    stagingTableCommand.Append($", Source.[{prop.GetColumnName()}]");
+                    stagingTableCommand.Append($", [Source].[{prop.GetColumnName()}]");
                 }
             }
             stagingTableCommand.Append($" INTO {tableName} FROM {entityInfo.FullTableName} AS A LEFT JOIN {entityInfo.FullTableName} AS Source ON 1 = 2");
@@ -199,9 +210,9 @@ namespace EntityFramework.BulkOperations
 
         private static void BulkInsertToTable<TEntity>(EntityInfo entityInfo, DbContext context, IEnumerable<TEntity> entities, string tableName, OperationType operationType) where TEntity : class
         {
-            IEnumerable<IProperty> props = operationType == OperationType.Delete ? entityInfo.EntityProperties : entityInfo.PrimaryKeyProperties;
+            IEnumerable<IProperty> props = operationType == OperationType.Delete ? entityInfo.PrimaryKeyProperties : entityInfo.EntityProperties;
 
-            using SqlBulkCopy sqlBulkCopy = new SqlBulkCopy((SqlConnection)context.Database.GetDbConnection(), SqlBulkCopyOptions.Default, (SqlTransaction)context.Database.CurrentTransaction?.GetDbTransaction());
+            using SqlBulkCopy sqlBulkCopy = new SqlBulkCopy((SqlConnection)context.Database.GetDbConnection(), SqlBulkCopyOptions.Default, (SqlTransaction)context.Database.CurrentTransaction.GetDbTransaction());
             foreach (IProperty prop in props)
             {
                 sqlBulkCopy.ColumnMappings.Add(prop.GetColumnName(), prop.GetColumnName());

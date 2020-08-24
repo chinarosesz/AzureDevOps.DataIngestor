@@ -22,9 +22,6 @@ namespace AzureDevOps.DataIngestor
             // Redirect ILogger to Console
             ILogger logger = Program.RedirectLoggerToConsole();
 
-            // Create DbContext client
-            VssDbContext dbContext = new VssDbContext(parsedOptions.SqlServerConnectionString, logger);
-
             // Create AzureDevOps client
             VssClient vssClient = await Program.ConnectAzureDevOpsAsync(parsedOptions, logger);
 

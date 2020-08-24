@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace AzureDevOps.DataIngestor.Sdk.Ingestors
@@ -57,9 +58,10 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
 
             using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
             using IDbContextTransaction transaction = context.Database.BeginTransaction();
-            context.BulkDelete(context.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
-            context.BulkInsert(entities);
+            int deletedResult = context.BulkDelete(context.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
+            int insertedResult = context.BulkInsert(entities);
             transaction.Commit();
+            this.logger.LogInformation($"Succesfully deleted {deletedResult} and inserted {insertedResult} records");
         }
     }
 }
