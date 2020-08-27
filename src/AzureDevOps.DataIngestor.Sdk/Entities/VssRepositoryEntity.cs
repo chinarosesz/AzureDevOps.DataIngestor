@@ -19,5 +19,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
         public string DefaultBranch { get; set; }
 
         public string WebUrl { get; set; }
+
+        public string Data { get; internal set; }
     }
 }

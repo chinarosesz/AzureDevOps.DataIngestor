@@ -8,6 +8,7 @@ using Microsoft.TeamFoundation.Build.WebApi;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.VisualStudio.Services.WebApi;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOps.DataIngestor.Sdk.Ingestors
@@ -46,6 +47,9 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     this.IngestData(definitionList, project);
                 }
             }
+
+            // Remove build definitions that don't exist in current list
+            this.Cleanup();
         }
 
         private void IngestData(List<BuildDefinition> buildDefinitions, TeamProjectReference project)
@@ -75,7 +79,6 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     RepositoryName = buildDefinition.Repository?.Name,
                     RepositoryId = buildDefinition.Repository?.Id,
                     Organization = this.vssClient.OrganizationName,
-                    Data = Helper.SerializeObject(buildDefinition),
                 };
                 buildDefinitionEntities.Add(buildDefinitionEntity);
 
@@ -113,7 +116,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
 
                                 // Extra data context
                                 Organization = this.vssClient.OrganizationName,
-                                Data = Helper.SerializeObject(phase.Steps),
+                                //Data = Helper.SerializeObject(phase.Steps),
                             };
                             buildDefinitionStepEntities.Add(buildDefinitionStepEntity);
                             stepNumber++;
@@ -128,7 +131,19 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             int buildDefinitionEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionEntities);
             int buildDefinitionStepEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionStepEntities);
             transaction.Commit();
-            this.logger.LogInformation($"Completed operation InsertOrUpdate {buildDefinitionEntitiesResult} build definitions and {buildDefinitionStepEntitiesResult} build definition steps");
+            this.logger.LogInformation($"Successfully inserted {buildDefinitionEntitiesResult} build definitions and {buildDefinitionStepEntitiesResult} build definition steps");
+        }
+
+        // Clean up any stale data since this is a snapshot of data ingestion
+        private void Cleanup()
+        {
+            this.logger.LogInformation($"Cleaning up stale data for {this.vssClient.OrganizationName}...");
+            using VssDbContext dbContext = new VssDbContext(this.sqlServerConnectionString, logger);
+            using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
+            int deletedBuildDefinitionResult = dbContext.BulkDelete(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow));
+            int deletedBuildDefinitionStepResult = dbContext.BulkDelete(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());
+            transaction.Commit();
+            this.logger.LogInformation($"Done deleting {deletedBuildDefinitionResult} build definitions and {deletedBuildDefinitionStepResult} build definition steps");
         }
 
         private string GetPhaseType(Phase phase)

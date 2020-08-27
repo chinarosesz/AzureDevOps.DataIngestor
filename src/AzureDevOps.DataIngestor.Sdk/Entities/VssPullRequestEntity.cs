@@ -40,5 +40,6 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
 
         [Column(TypeName = "datetime2")]
         public DateTime ClosedDate { get; set; }
+        public string Data { get; internal set; }
     }
 }
