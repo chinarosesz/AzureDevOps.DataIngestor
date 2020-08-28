@@ -126,19 +126,20 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 // todo: Need to parse yaml file here
             }
 
-            using VssDbContext dbContext = new VssDbContext(this.sqlServerConnectionString, logger);
+            this.logger.LogInformation("Start ingesting build definition data...");
+            using VssDbContext dbContext = new VssDbContext(logger, this.sqlServerConnectionString);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
             int buildDefinitionEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionEntities);
             int buildDefinitionStepEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionStepEntities);
             transaction.Commit();
-            this.logger.LogInformation($"Successfully inserted {buildDefinitionEntitiesResult} build definitions and {buildDefinitionStepEntitiesResult} build definition steps");
+            this.logger.LogInformation($"Done ingesting {buildDefinitionEntitiesResult} build definitions and {buildDefinitionStepEntitiesResult} build definition steps");
         }
 
         // Clean up any stale data since this is a snapshot of data ingestion
         private void Cleanup()
         {
-            this.logger.LogInformation($"Cleaning up stale data for {this.vssClient.OrganizationName}...");
-            using VssDbContext dbContext = new VssDbContext(this.sqlServerConnectionString, logger);
+            this.logger.LogInformation($"Start deleting up stale data for {this.vssClient.OrganizationName}...");
+            using VssDbContext dbContext = new VssDbContext(logger, this.sqlServerConnectionString);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
             int deletedBuildDefinitionResult = dbContext.BulkDelete(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow));
             int deletedBuildDefinitionStepResult = dbContext.BulkDelete(dbContext.VssBuildDefinitionStepEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow).ToList());

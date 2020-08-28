@@ -21,7 +21,5 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
         public DateTime LastUpdateTime { get; set; }
 
         public string Url { get; set; }
-
-        public string Data { get; set; }
     }
 }

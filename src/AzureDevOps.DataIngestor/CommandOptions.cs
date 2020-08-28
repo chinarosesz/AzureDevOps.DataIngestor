@@ -25,13 +25,13 @@ namespace AzureDevOps.DataIngestor
 
     public class CommandOptions
     {
-        [Option("account", Required = true, HelpText = "The name of Azure DevOps account, for example: https://dev.azure.com/lilatran where lilatran is the account name")]
-        public string Account { get; set; }
+        [Option("organization", Required = true, HelpText = "The name of Azure DevOps account, for example: https://dev.azure.com/lilatran where lilatran is the account name")]
+        public string Organization { get; set; }
 
-        [Option("pat", HelpText = "Azure DevOps Personal Access Token. If not provided, will look for environment variable VssPersonalAccessToken. If not set as environment variable, will use current logged in domain user to connect as Oauth")]
+        [Option("pat", HelpText = "Provide an Azure DevOps Personal Access Token. If not provided, the program looks for environment variable VssPersonalAccessToken. If not set as environment variable, program uses current logged in domain user to connect as Oauth")]
         public string PersonalAccessToken { get; set; }
 
-        [Option("connection", Default = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=AzureDevOps", HelpText = "SQL Server database connection string. If not specfied, data will be in local database")]
+        [Option("sqlserverconnectionstring", HelpText = "If not specified from command line or as an environment variable VssSqlServerConnectionString, then use local database VssAzureDevOps")]
         public string SqlServerConnectionString { get; set; }
     }
 

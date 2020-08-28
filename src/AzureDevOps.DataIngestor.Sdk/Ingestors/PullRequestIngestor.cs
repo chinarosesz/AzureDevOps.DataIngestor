@@ -84,12 +84,11 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     Organization = this.vssClient.OrganizationName,
                     RowUpdatedDate = Helper.UtcNow,
                     ProjectName = project.Name,
-                    Data = Helper.SerializeObject(pullRequest),
                 };
                 entities.Add(entity);
             }
 
-            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
             context.BulkInsertOrUpdate(entities);
         }
 
@@ -104,8 +103,10 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 PullRequestStatus = status.ToString(),
             };
 
-            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
-            context.BulkInsertOrUpdate(new List<VssPullRequestWatermarkEntity> { vssPullRequestWatermarkEntity });
+            this.logger.LogInformation("Start ingesting pull request data...");
+            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+            int ingestedResult = context.BulkInsertOrUpdate(new List<VssPullRequestWatermarkEntity> { vssPullRequestWatermarkEntity });
+            this.logger.LogInformation($"Done ingesting {ingestedResult} records");
         }
 
         private DateTime GetPullRequestWatermark(TeamProjectReference project, PullRequestStatus status)
@@ -114,7 +115,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-1);
 
             // Get latest ingested date for pull request from pull request watermark table
-            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
             VssPullRequestWatermarkEntity latestWatermark = context.VssPullRequestWatermarkEntities.Where(v => v.ProjectId == project.Id && v.PullRequestStatus == status.ToString()).FirstOrDefault();
             if (latestWatermark != null)
             {

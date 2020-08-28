@@ -1,5 +1,4 @@
-﻿using AzureDevOps.DataIngestor.Sdk;
-using AzureDevOps.DataIngestor.Sdk.Clients;
+﻿using AzureDevOps.DataIngestor.Sdk.Clients;
 using AzureDevOps.DataIngestor.Sdk.Ingestors;
 using CommandLine;
 using CommandLine.Text;
@@ -15,18 +14,39 @@ namespace AzureDevOps.DataIngestor
     {
         public static async Task<int> Main(string[] args)
         {
+            // Redirect ILogger to Console
+            ILogger logger = Program.RedirectLoggerToConsole();
+
             // Parse command line
             CommandOptions parsedOptions = Program.ParseArguments(args);
             if (parsedOptions == null) { return -1; }
 
-            // Redirect ILogger to Console
-            ILogger logger = Program.RedirectLoggerToConsole();
+            // Get Personal Access Token from command line or environment variable
+            string personalAccessToken = parsedOptions.PersonalAccessToken;
+            if (string.IsNullOrEmpty(personalAccessToken))
+            {
+                personalAccessToken = Environment.GetEnvironmentVariable("VssPersonalAccessToken");
+            }
 
-            // Create AzureDevOps client
-            VssClient vssClient = await Program.ConnectAzureDevOpsAsync(parsedOptions, logger);
+            // Get Sql Server connection string from command line or environment variable
+            string sqlServerConnectionString = string.IsNullOrEmpty(parsedOptions.SqlServerConnectionString) ? Environment.GetEnvironmentVariable("VssSqlServerConnectionString") : parsedOptions.SqlServerConnectionString;
+
+            // Create Azure DevOps HttpClient
+            VssClient vssClient;
+            if (string.IsNullOrEmpty(personalAccessToken))
+            {
+                // Connect using current signed in domain user
+                string bearerToken = await VssClientHelper.GetAzureDevOpsBearerTokenForCurrentUserAsync();
+                vssClient = new VssClient(parsedOptions.Organization, bearerToken, VssTokenType.Bearer, logger);
+            }
+            else
+            {
+                // Connect using personal access token
+                vssClient = new VssClient(parsedOptions.Organization, personalAccessToken, VssTokenType.Basic, logger);
+            }
 
             // Run collector
-            await Program.RunCollectorAsync(parsedOptions, vssClient, parsedOptions.SqlServerConnectionString, logger);
+            await Program.RunCollectorAsync(parsedOptions, vssClient, sqlServerConnectionString, logger);
 
             // Returns zero on success
             return 0;
@@ -73,29 +93,6 @@ namespace AzureDevOps.DataIngestor
             ILogger logger = loggerFactory.CreateLogger(string.Empty);
 
             return logger;
-        }
-
-        private static async Task<VssClient> ConnectAzureDevOpsAsync(CommandOptions parsedOptions, ILogger logger)
-        {
-            VssClient vssClient;
-            if (!string.IsNullOrEmpty(parsedOptions.PersonalAccessToken))
-            {
-                // Connect using personal access token
-                vssClient = new VssClient(parsedOptions.Account, parsedOptions.PersonalAccessToken, VssTokenType.Basic, logger);
-            }
-            else if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VssPersonalAccessToken")))
-            {
-                // Connect using personal access token from environment variable
-                vssClient = new VssClient(parsedOptions.Account, Environment.GetEnvironmentVariable("VssPersonalAccessToken"), VssTokenType.Basic, logger);
-            }
-            else
-            {
-                // Connect using current signed in domain joined user
-                string bearerToken = await VssClientHelper.GetAzureDevOpsBearerTokenForCurrentUserAsync();
-                vssClient = new VssClient(parsedOptions.Account, bearerToken, VssTokenType.Bearer, logger);
-            }
-
-            return vssClient;
         }
 
         private static CommandOptions ParseArguments(string[] args)

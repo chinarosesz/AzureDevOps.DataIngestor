@@ -51,17 +51,17 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     State = project.State.ToString(),
                     Visibility = project.Visibility.ToString(),
                     Url = project.Url,
-                    Data = Helper.SerializeObject(project),
                 };
                 entities.Add(entity);
             }
 
-            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            this.logger.LogInformation("Start ingesting projects data...");
+            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
             using IDbContextTransaction transaction = context.Database.BeginTransaction();
-            int deletedResult = context.BulkDelete(context.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
+            context.BulkDelete(context.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName));
             int insertedResult = context.BulkInsert(entities);
             transaction.Commit();
-            this.logger.LogInformation($"Succesfully deleted {deletedResult} and inserted {insertedResult} records");
+            this.logger.LogInformation($"Done ingesting {insertedResult} records");
         }
     }
 }

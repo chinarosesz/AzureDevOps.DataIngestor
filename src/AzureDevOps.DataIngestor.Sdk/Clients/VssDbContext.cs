@@ -17,18 +17,22 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
         public DbSet<VssBuildDefinitionStepEntity> VssBuildDefinitionStepEntities { get; set; }
         public DbSet<VssPullRequestWatermarkEntity> VssPullRequestWatermarkEntities { get; set; }
 
-        public VssDbContext() : base() 
-        { 
-        }
-
-        public VssDbContext(string connectionString, ILogger logger) : base()
+        
+        public VssDbContext(ILogger logger, string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=VssAzureDevOps") : base()
         {
             this.logger = logger;
             this.connectionString = connectionString;
-
-            this.logger.LogInformation($"Create a new database context using database {this.Database.GetDbConnection().Database} from server {this.Database.GetDbConnection().DataSource}");
             this.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
-            this.Database.Migrate();
+
+            try
+            {
+                this.Database.Migrate();
+            }
+            catch (ArgumentException)
+            {
+                this.logger.LogInformation("Failed to migrate database with current connection string");
+                throw;
+            }
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

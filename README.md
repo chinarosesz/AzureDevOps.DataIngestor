@@ -1,26 +1,25 @@
 # Azure DevOps Data Ingestor
-Collect Azure DevOps data by calling Azure DevOps SDK which calls into their REST API's. The following ingestors are implemented:
+A console application that calls Azure DevOps client libraries and ingests data into a specified SQL Server database. The 
+following ingestors are available and can be specified from the command line.
 * Project
 * Repository
 * PullRequest
 * BuildDefinition
 
-Data is collected and inserted directly into SQL Server. List of represented in SQL tables can be found from these collectors:
-* VssProject
-* VssRepository
-* VssPullRequest
-* VssBuildDefinition
-* VssBuildDefinitionStep
-
 # Downloads
-1. Install tool from https://www.nuget.org/packages/AzureDevOpsDataCollector.Console
-1. Run executable for help menu
+Install tool from https://www.nuget.org/packages/AzureDevOps.DataIngestor
 
-# Sample Usage
-Collects project from Azure DevOps
-* <code>AzureDevOps.Ingestor.exe project --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+# Usage
+The console application can be executed by calling <code>AzureDevOps.DataIngestor.exe</code>. The help menu shows up if you 
+give it no parameters. Below are some usage examples.
 
-Collects build definition from Azure DevOps given a list of projects or for all projects
-* <code>AzureDevOps.Ingestor.exe builddefinition --account myaccount --projects project1:project2 --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
-* <code>AzureDevOps.Ingestor.exe builddefinition --account myaccount --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+To collect projects data from Azure DevOps.
+> <code>AzureDevOps.DataIngestor.exe project --organization MyOrg --pat MyPersonalAccessToken --sqlserverconnectionstring MySqlServerConnectionString</code>
+
+To collect build definition data from Azure DevOps for all projects, param <code>--projects</code> is not required.
+> <code>AzureDevOps.Ingestor.exe builddefinition --organization MyOrg --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+
+To collect build definition data from Azure DevOps given a list of projects
+> <code>AzureDevOps.Ingestor.exe builddefinition --organization MyOrg --projects project1:project2 --pat MyPersonalAccessToken --connection MySqlServerConnectionString</code>
+
 

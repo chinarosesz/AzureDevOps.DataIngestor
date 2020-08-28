@@ -22,7 +22,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
 
         public async Task<List<BuildDefinitionReference>> GetBuildDefinitionsAsync(string projectName)
         {
-            this.logger.LogInformation($"Retrieving build definitions for project {projectName}");
+            this.logger.LogInformation($"Retrieving build definitions from Azure DevOps for project {projectName}...");
 
             List<BuildDefinitionReference> buildDefinitionReferences = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
             {
@@ -38,7 +38,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
                 return buildDefinitionReferences;
             });
 
-            this.logger.LogInformation($"Retrieved {buildDefinitionReferences.Count} build definitions");
+            this.logger.LogInformation($"Done retrieving {buildDefinitionReferences.Count} build definitions");
             return buildDefinitionReferences;
         }
 
@@ -51,9 +51,9 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
             {
                 currentDefinitions = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
                 {
-                    this.logger.LogInformation($"Retrieving full build definitions for project {projectName}");
+                    this.logger.LogInformation($"Retrieving full build definitions from Azure DevOps for project {projectName}");
                     IPagedList<BuildDefinition> retrievedBuildDefs = await this.GetFullDefinitionsAsync2(project: projectName, top: 2000, queryOrder: DefinitionQueryOrder.LastModifiedAscending, continuationToken: continuationToken);
-                    this.logger.LogInformation($"Retrieved {retrievedBuildDefs.Count} build definitions");
+                    this.logger.LogInformation($"Done Retrieving {retrievedBuildDefs.Count} build definitions");
                     return retrievedBuildDefs;
                 });
 

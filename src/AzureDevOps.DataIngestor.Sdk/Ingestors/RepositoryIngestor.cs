@@ -1,6 +1,5 @@
 ﻿using AzureDevOps.DataIngestor.Sdk.Clients;
 using AzureDevOps.DataIngestor.Sdk.Entities;
-using AzureDevOps.DataIngestor.Sdk.Util;
 using EntityFramework.BulkOperations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
@@ -60,17 +59,17 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     ProjectId = repo.ProjectReference.Id,
                     ProjectName = repo.ProjectReference.Name,
                     WebUrl = repo.RemoteUrl,
-                    Data = Helper.SerializeObject(repo),
                 };
                 entities.Add(repoEntity);
             }
 
-            using VssDbContext context = new VssDbContext(this.sqlConnectionString, logger);
+            this.logger.LogInformation("Start ingesting repsoitories data to database...");
+            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
             using IDbContextTransaction transaction = context.Database.BeginTransaction();
-            int deleteResult = context.BulkDelete(context.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null).ToList());
+            context.BulkDelete(context.VssRepositoryEntities.Where(v => v.Organization == this.vssClient.OrganizationName || v.Organization == null));
             int insertResult = context.BulkInsert(entities);
             transaction.Commit();
-            this.logger.LogInformation($"Successfully deleted {deleteResult} and inserted {insertResult} records");
+            this.logger.LogInformation($"Done ingesting {insertResult} records");
         }
     }
 }

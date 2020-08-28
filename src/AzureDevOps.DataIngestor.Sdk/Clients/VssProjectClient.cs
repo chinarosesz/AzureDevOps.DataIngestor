@@ -22,7 +22,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
 
         public async Task<List<TeamProjectReference>> GetProjectsAsync(IEnumerable<string> projectNames = null)
         {
-            this.logger.LogInformation("Retrieving projects");
+            this.logger.LogInformation("Retrieving projects data from Azure DevOps...");
 
             // Retrieve all projects
             List<TeamProjectReference> projects = await RetryHelper.SleepAndRetry(VssClientHelper.GetRetryAfter(this.LastResponseContext), this.logger, async () =>
@@ -56,7 +56,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
                 projects = filteredProjects;
             }
 
-            this.logger.LogInformation($"Retrieved {projects.Count} projects");
+            this.logger.LogInformation($"Done retrieving {projects.Count} projects");
 
             return projects;
         }
