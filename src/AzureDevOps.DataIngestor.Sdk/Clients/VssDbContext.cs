@@ -17,6 +17,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
         public DbSet<VssBuildDefinitionStepEntity> VssBuildDefinitionStepEntities { get; set; }
         public DbSet<VssPullRequestWatermarkEntity> VssPullRequestWatermarkEntities { get; set; }
 
+        public VssDbContext() : base() { }
         
         public VssDbContext(ILogger logger, string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=VssAzureDevOps") : base()
         {
