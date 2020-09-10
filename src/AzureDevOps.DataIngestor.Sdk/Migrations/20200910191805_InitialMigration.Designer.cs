@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AzureDevOps.DataIngestor.Sdk.Migrations
 {
     [DbContext(typeof(VssDbContext))]
-    [Migration("20200904231710_InitialCreate2")]
-    partial class InitialCreate2
+    [Migration("20200910191805_InitialMigration")]
+    partial class InitialMigration
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -32,8 +32,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Data")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<byte[]>("GZipCompressedJsonData")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<bool?>("IsHosted")
                         .HasColumnType("bit");
@@ -169,8 +169,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
 
                     b.HasKey("ProjectId");
 
-                    b.HasIndex("Organization")
-                        .HasAnnotation("SqlServer:Clustered", false);
+                    b.HasIndex("Organization");
 
                     b.ToTable("VssProject");
                 });
@@ -281,8 +280,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
 
                     b.HasKey("RepoId");
 
-                    b.HasIndex("Organization")
-                        .HasAnnotation("SqlServer:Clustered", false);
+                    b.HasIndex("Organization");
 
                     b.ToTable("VssRepository");
                 });

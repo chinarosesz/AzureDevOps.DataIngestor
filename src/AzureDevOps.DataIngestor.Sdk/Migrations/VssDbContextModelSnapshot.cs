@@ -30,6 +30,9 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<byte[]>("GZipCompressedJsonData")
+                        .HasColumnType("varbinary(max)");
+
                     b.Property<bool?>("IsHosted")
                         .HasColumnType("bit");
 
@@ -130,19 +133,6 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
                     b.HasKey("ProjectId", "BuildDefinitionId", "StepNumber");
 
                     b.ToTable("VssBuildDefinitionStep");
-                });
-
-            modelBuilder.Entity("AzureDevOps.DataIngestor.Sdk.Entities.VssDataEntity", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Data")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("VssDataEntities");
                 });
 
             modelBuilder.Entity("AzureDevOps.DataIngestor.Sdk.Entities.VssProjectEntity", b =>

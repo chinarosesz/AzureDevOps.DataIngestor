@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace AzureDevOps.DataIngestor.Sdk.Migrations
 {
-    public partial class InitialCreate : Migration
+    public partial class InitialMigration : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -28,7 +28,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
                     QueueId = table.Column<int>(nullable: true),
                     WebLink = table.Column<string>(nullable: true),
                     RepositoryName = table.Column<string>(nullable: true),
-                    RepositoryId = table.Column<string>(nullable: true)
+                    RepositoryId = table.Column<string>(nullable: true),
+                    GZipCompressedJsonData = table.Column<byte[]>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -140,14 +141,12 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_VssProject_Organization",
                 table: "VssProject",
-                column: "Organization")
-                .Annotation("SqlServer:Clustered", false);
+                column: "Organization");
 
             migrationBuilder.CreateIndex(
                 name: "IX_VssRepository_Organization",
                 table: "VssRepository",
-                column: "Organization")
-                .Annotation("SqlServer:Clustered", false);
+                column: "Organization");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

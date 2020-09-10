@@ -24,5 +24,6 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
         public string WebLink { get; internal set; }
         public string RepositoryName { get; internal set; }
         public string RepositoryId { get; internal set; }
+        public byte[] GZipCompressedJsonData { get; set; }
     }
 }

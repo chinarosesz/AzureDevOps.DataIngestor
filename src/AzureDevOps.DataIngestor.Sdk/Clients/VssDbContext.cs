@@ -16,7 +16,6 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
         public DbSet<VssBuildDefinitionEntity> VssBuildDefinitionEntities { get; set; }
         public DbSet<VssBuildDefinitionStepEntity> VssBuildDefinitionStepEntities { get; set; }
         public DbSet<VssPullRequestWatermarkEntity> VssPullRequestWatermarkEntities { get; set; }
-        internal DbSet<VssDataEntity> VssDataEntities  { get; set; }
 
         public VssDbContext() : base() { }
         

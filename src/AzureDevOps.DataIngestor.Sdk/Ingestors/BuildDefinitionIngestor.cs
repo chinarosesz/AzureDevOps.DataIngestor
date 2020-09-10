@@ -56,7 +56,6 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
         {
             List<VssBuildDefinitionEntity> buildDefinitionEntities = new List<VssBuildDefinitionEntity>();
             List<VssBuildDefinitionStepEntity> buildDefinitionStepEntities = new List<VssBuildDefinitionStepEntity>();
-            List<VssDataEntity> vssDataEntities = new List<VssDataEntity>();
 
             foreach (BuildDefinition buildDefinition in buildDefinitions)
             {
@@ -80,16 +79,9 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     RepositoryName = buildDefinition.Repository?.Name,
                     RepositoryId = buildDefinition.Repository?.Id,
                     Organization = this.vssClient.OrganizationName,
+                    GZipCompressedJsonData = Helper.Compress(buildDefinition),
                 };
                 buildDefinitionEntities.Add(buildDefinitionEntity);
-
-                // Add json response to a separate table
-                VssDataEntity vssDataEntity = new VssDataEntity
-                {
-                    Id = $"{this.vssClient.OrganizationName}.{project.Name}.{buildDefinition.Id}",
-                    Data = Helper.SerializeObject(buildDefinitionEntity),
-                };
-                vssDataEntities.Add(vssDataEntity);
 
                 // Parse build definition steps for designer process
                 if (buildDefinition.Process.GetType() == typeof(DesignerProcess))
@@ -135,20 +127,19 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 // todo: Need to parse yaml file here
             }
 
-            this.logger.LogInformation("Start ingesting build definition data...");
+            this.logger.LogInformation("Ingesting build definition data...");
             using VssDbContext dbContext = new VssDbContext(logger, this.sqlServerConnectionString);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
             int buildDefinitionEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionEntities);
-            int buildDefinitionDataResult = dbContext.BulkInsertOrUpdate(vssDataEntities);
             int buildDefinitionStepEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionStepEntities);
             transaction.Commit();
-            this.logger.LogInformation($"Done ingesting {buildDefinitionEntitiesResult} build definitions, {buildDefinitionStepEntitiesResult} build definition steps, and {buildDefinitionDataResult} data records");
+            this.logger.LogInformation($"Done ingesting {buildDefinitionEntitiesResult} build definitions, {buildDefinitionStepEntitiesResult} build definition steps");
         }
 
         // Clean up any stale data since this is a snapshot of data ingestion
         private void Cleanup()
         {
-            this.logger.LogInformation($"Start deleting up stale data for {this.vssClient.OrganizationName}...");
+            this.logger.LogInformation($"Deleting up stale data for {this.vssClient.OrganizationName}...");
             using VssDbContext dbContext = new VssDbContext(logger, this.sqlServerConnectionString);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
             int deletedBuildDefinitionResult = dbContext.BulkDelete(dbContext.VssBuildDefinitionEntities.Where(v => v.Organization == this.vssClient.OrganizationName && v.RowUpdatedDate < Helper.UtcNow));
