@@ -4,14 +4,16 @@ using AzureDevOps.DataIngestor.Sdk.Clients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AzureDevOps.DataIngestor.Sdk.Migrations
 {
     [DbContext(typeof(VssDbContext))]
-    partial class VssDbContextModelSnapshot : ModelSnapshot
+    [Migration("20200908170610_InitialCreate3")]
+    partial class InitialCreate3
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -132,19 +134,6 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
                     b.ToTable("VssBuildDefinitionStep");
                 });
 
-            modelBuilder.Entity("AzureDevOps.DataIngestor.Sdk.Entities.VssDataEntity", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Data")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("VssDataEntities");
-                });
-
             modelBuilder.Entity("AzureDevOps.DataIngestor.Sdk.Entities.VssProjectEntity", b =>
                 {
                     b.Property<Guid>("ProjectId")
@@ -177,7 +166,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
 
                     b.HasKey("ProjectId");
 
-                    b.HasIndex("Organization");
+                    b.HasIndex("Organization")
+                        .HasAnnotation("SqlServer:Clustered", false);
 
                     b.ToTable("VssProject");
                 });
@@ -288,7 +278,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Migrations
 
                     b.HasKey("RepoId");
 
-                    b.HasIndex("Organization");
+                    b.HasIndex("Organization")
+                        .HasAnnotation("SqlServer:Clustered", false);
 
                     b.ToTable("VssRepository");
                 });

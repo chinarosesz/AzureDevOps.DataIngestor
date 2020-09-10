@@ -10,6 +10,9 @@ namespace EntityFramework.BulkOperations.Tests
         private readonly ILogger logger;
 
         public DbSet<EmployeeEntity> EmployeeEntities { get; set; }
+        public DbSet<EmployeeDataEntity> EmployeeDataEntities { get; set; }
+        public DbSet<EmployeeWithDataEntity> EmployeeWithDataEntities { get; set; }
+        public DbSet<EmployeeWithCompressedDataEntity> EmployeeWithCompressedDataEntities { get; set; }
 
         public EmployeeDbContext() : base() 
         { 
@@ -22,6 +25,7 @@ namespace EntityFramework.BulkOperations.Tests
 
             this.logger.LogInformation($"Create a new database context using database {this.Database.GetDbConnection().Database} from server {this.Database.GetDbConnection().DataSource}");
             this.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
+            this.Database.EnsureDeleted();
             this.Database.Migrate();
         }
 

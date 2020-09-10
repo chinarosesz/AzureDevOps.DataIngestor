@@ -74,7 +74,7 @@ namespace EntityFramework.BulkOperations
         {
             // Merge command looks like:
             // MERGE INTO [VssBuildDefinition] WITH (HOLDLOCK) AS Target USING [_VssBuildDefinition_02da3b] AS Source ON [Target].[Id] = [Source].[Id] AND [Target].[ProjectId] = [Source].[ProjectId] 
-            StringBuilder mergeCommand = new StringBuilder($"MERGE INTO {entityInfo.FullTableName} WITH (HOLDLOCK) AS Target USING {tempTableName} AS SOURCE ");
+            StringBuilder mergeCommand = new StringBuilder($"MERGE INTO {entityInfo.FullTableName} AS Target USING {tempTableName} AS SOURCE ");
             bool isFirst = true;
             foreach (IProperty property in entityInfo.PrimaryKeyProperties)
             {

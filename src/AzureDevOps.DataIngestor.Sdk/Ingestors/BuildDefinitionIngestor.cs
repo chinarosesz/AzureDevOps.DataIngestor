@@ -56,6 +56,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
         {
             List<VssBuildDefinitionEntity> buildDefinitionEntities = new List<VssBuildDefinitionEntity>();
             List<VssBuildDefinitionStepEntity> buildDefinitionStepEntities = new List<VssBuildDefinitionStepEntity>();
+            List<VssDataEntity> vssDataEntities = new List<VssDataEntity>();
 
             foreach (BuildDefinition buildDefinition in buildDefinitions)
             {
@@ -81,6 +82,14 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     Organization = this.vssClient.OrganizationName,
                 };
                 buildDefinitionEntities.Add(buildDefinitionEntity);
+
+                // Add json response to a separate table
+                VssDataEntity vssDataEntity = new VssDataEntity
+                {
+                    Id = $"{this.vssClient.OrganizationName}.{project.Name}.{buildDefinition.Id}",
+                    Data = Helper.SerializeObject(buildDefinitionEntity),
+                };
+                vssDataEntities.Add(vssDataEntity);
 
                 // Parse build definition steps for designer process
                 if (buildDefinition.Process.GetType() == typeof(DesignerProcess))
@@ -130,9 +139,10 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             using VssDbContext dbContext = new VssDbContext(logger, this.sqlServerConnectionString);
             using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
             int buildDefinitionEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionEntities);
+            int buildDefinitionDataResult = dbContext.BulkInsertOrUpdate(vssDataEntities);
             int buildDefinitionStepEntitiesResult = dbContext.BulkInsertOrUpdate(buildDefinitionStepEntities);
             transaction.Commit();
-            this.logger.LogInformation($"Done ingesting {buildDefinitionEntitiesResult} build definitions and {buildDefinitionStepEntitiesResult} build definition steps");
+            this.logger.LogInformation($"Done ingesting {buildDefinitionEntitiesResult} build definitions, {buildDefinitionStepEntitiesResult} build definition steps, and {buildDefinitionDataResult} data records");
         }
 
         // Clean up any stale data since this is a snapshot of data ingestion

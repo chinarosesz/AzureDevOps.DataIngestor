@@ -16,6 +16,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
         public DbSet<VssBuildDefinitionEntity> VssBuildDefinitionEntities { get; set; }
         public DbSet<VssBuildDefinitionStepEntity> VssBuildDefinitionStepEntities { get; set; }
         public DbSet<VssPullRequestWatermarkEntity> VssPullRequestWatermarkEntities { get; set; }
+        internal DbSet<VssDataEntity> VssDataEntities  { get; set; }
 
         public VssDbContext() : base() { }
         
@@ -51,10 +52,10 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<VssProjectEntity>()
-                .HasIndex(p => p.Organization).IsClustered(false);
+                .HasIndex(p => p.Organization);
 
             modelBuilder.Entity<VssRepositoryEntity>()
-                .HasIndex(p => p.Organization).IsClustered(false);
+                .HasIndex(p => p.Organization);
 
             modelBuilder.Entity<VssPullRequestEntity>()
                 .HasKey(p => new { p.PullRequestId, p.RepositoryId });
