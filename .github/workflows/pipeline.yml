@@ -27,4 +27,4 @@ jobs:
         name: AzureDevOps.DataIngestor
         path: '**\bin\**\AzureDevOps.DataIngestor.*'
     - name: Publish Nuget Package
-      run: dotnet nuget push src\AzureDevOps.DataIngestor\bin\Release\*.nupkg -k ${{ secrets.NUGETPUSHONLYAPIKEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols
+      run: dotnet nuget push src\AzureDevOps.DataIngestor\bin\Release\*.nupkg -k ${{ secrets.NUGETPUSHONLYAPIKEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols true
