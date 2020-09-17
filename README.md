@@ -32,18 +32,18 @@ An example command with SQL connection string and personal access token being pa
 The below usage demonstrates how to call each ingestor. These examples already have personal access token and sql connection 
 string set as environment variables so they don't have to be passed in to the command line.
  
-#### Project
+### Project
 To collect projects data from Azure DevOps.
 > <code>AzureDevOps.DataIngestor.exe project --organization MyOrg</code>
 
-#### Build Definition
+### Build Definition
 Collect build definition data from Azure DevOps for all projects, param <code>--projects</code> is not required.
 > <code>AzureDevOps.Ingestor.exe builddefinition --organization MyOrg</code>
 
 To collect build definition data from Azure DevOps given a list of projects
 > <code>AzureDevOps.Ingestor.exe builddefinition --organization MyOrg --projects project1:project2</code>
 
-#### Pull Request
+### Pull Request
 Pull requests are collected by going back one month. This ingestor only collects completed and active pull requests.
 Currently there is no support for abandoned pull requests. Once the ingestor is finished running, a watermark is updated to
 the most recent run date, and the next time this ingestor gets called again, it will not collect the same pull requests.
