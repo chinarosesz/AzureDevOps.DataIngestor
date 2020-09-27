@@ -1,14 +1,11 @@
 ﻿using AzureDevOps.DataIngestor.Sdk.Clients;
 using AzureDevOps.DataIngestor.Sdk.Entities;
-using AzureDevOps.DataIngestor.Sdk.Util;
-using EntityFramework.BulkOperations;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using EntityFrameworkCore.BulkOperations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace AzureDevOps.DataIngestor.Sdk.Ingestors

@@ -1,7 +1,7 @@
 ﻿using AzureDevOps.DataIngestor.Sdk.Clients;
 using AzureDevOps.DataIngestor.Sdk.Entities;
 using AzureDevOps.DataIngestor.Sdk.Util;
-using EntityFramework.BulkOperations;
+using EntityFrameworkCore.BulkOperations;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
