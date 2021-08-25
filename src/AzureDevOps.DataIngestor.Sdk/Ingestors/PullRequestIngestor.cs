@@ -35,7 +35,9 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             // For each repositry in each project, retrieve and ingest pull request data
             foreach (TeamProjectReference project in projects)
             {
+                this.logger.LogInformation($"Retrieve and ingest {PullRequestStatus.Active} pull requests");
                 RetrieveAndIngestPullRequest(project, PullRequestStatus.Active);
+                this.logger.LogInformation($"Retrieve and ingest {PullRequestStatus.Completed} pull requests");
                 RetrieveAndIngestPullRequest(project, PullRequestStatus.Completed);
             }
         }
@@ -88,8 +90,10 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 entities.Add(entity);
             }
 
+            this.logger.LogInformation("Ingesting pull request data...");
             using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
-            context.BulkInsertOrUpdate(entities);
+            int ingestedResult = context.BulkInsertOrUpdate(entities);
+            this.logger.LogInformation($"Done ingesting {ingestedResult} records");
         }
 
         private void UpdatePullRequestWatermark(PullRequestStatus status, TeamProjectReference project)
@@ -103,10 +107,10 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 PullRequestStatus = status.ToString(),
             };
 
-            this.logger.LogInformation("Start ingesting pull request data...");
+            this.logger.LogInformation($"Updating {vssPullRequestWatermarkEntity.PullRequestStatus} pull request watermark...");
             using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
             int ingestedResult = context.BulkInsertOrUpdate(new List<VssPullRequestWatermarkEntity> { vssPullRequestWatermarkEntity });
-            this.logger.LogInformation($"Done ingesting {ingestedResult} records");
+            this.logger.LogInformation($"Latest {vssPullRequestWatermarkEntity.PullRequestStatus} pull request watermark at {vssPullRequestWatermarkEntity.RowUpdatedDate}");
         }
 
         private DateTime GetPullRequestWatermark(TeamProjectReference project, PullRequestStatus status)

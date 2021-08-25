@@ -8,7 +8,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
     public class VssBuildDefinitionEntity : VssBaseEntity
     {
         [Key]
-        public int Id { get; internal set; }
+        public int Id { get; internal set; } // TODO BUG: this needs to include project ID as a double Key to be unique across projects/orgs
         public string Name { get; internal set; }
         public string Path { get; internal set; }
         public string ProjectName { get; internal set; }
