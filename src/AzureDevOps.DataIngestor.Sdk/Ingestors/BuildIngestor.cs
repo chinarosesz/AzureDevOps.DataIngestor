@@ -38,6 +38,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             foreach (TeamProjectReference project in projects)
             {
                 this.DisplayProjectHeader(this.logger, project.Name);
+
                 // Query for most recent date from watermark table first
                 DateTime mostRecentDate = this.GetBuildWatermark(project);
                 // Retrieve builds from Azure DevOps

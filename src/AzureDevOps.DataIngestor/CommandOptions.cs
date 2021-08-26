@@ -26,7 +26,6 @@ namespace AzureDevOps.DataIngestor
     [Verb("build", HelpText = "Collect build data given a specific project or all projects by default")]
     public class BuildCommandOptions : ProjectCommandOptionsBase
     {
-
     }
 
     public class CommandOptions
