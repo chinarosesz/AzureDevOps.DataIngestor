@@ -44,7 +44,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 // We set minFinishTime based on the watermark so that only newer builds will be retrieved
                 List<Build> buildsFromProject = await this.vssClient.BuildClient.GetBuildsAsync(project.Name, minFinishTime: mostRecentDate);
                 this.IngestBuilds(buildsFromProject);
-                this.UpdateBuildWatermark(project);
+                this.UpdateBuildWatermark(project, buildsFromProject);
             }
         }
 
@@ -85,10 +85,14 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             this.logger.LogInformation($"Done ingesting {ingestedResult} builds");
         }
 
-        private void UpdateBuildWatermark(TeamProjectReference project)
+        private void UpdateBuildWatermark(TeamProjectReference project, List<Build> buildsFromProject)
         {
+            List<Build> buildsSorted = buildsFromProject.Where(b => b.FinishTime != null).OrderByDescending(b => b.FinishTime).ToList();
+            // latest build time should be the newest ingested build, or if none were newly ingested, stay the same as it was.
+            DateTime latestBuildDate = (DateTime)(buildsSorted.Count > 0 ? buildsSorted.First().FinishTime : this.GetBuildWatermark(project));
             VssBuildWatermarkEntity vssBuildWatermarkEntity = new VssBuildWatermarkEntity
             {
+                LatestBuildFinishTime = latestBuildDate,
                 RowUpdatedDate = Helper.UtcNow,
                 Organization = this.vssClient.OrganizationName,
                 ProjectId = project.Id,
@@ -111,7 +115,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             VssBuildWatermarkEntity latestWatermark = context.VssBuildWatermarkEntities.Where(v => v.ProjectId == project.Id).FirstOrDefault();
             if (latestWatermark != null)
             {
-                mostRecentDate = latestWatermark.RowUpdatedDate;
+                mostRecentDate = latestWatermark.LatestBuildFinishTime;
             }
 
             return mostRecentDate;

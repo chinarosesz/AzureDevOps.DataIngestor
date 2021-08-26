@@ -13,6 +13,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
 
         public string Organization { get; set; }
 
+        public DateTime LatestBuildFinishTime { get; set; }
+
         public DateTime RowUpdatedDate { get; set; } = DateTime.UtcNow;
     }
 }
