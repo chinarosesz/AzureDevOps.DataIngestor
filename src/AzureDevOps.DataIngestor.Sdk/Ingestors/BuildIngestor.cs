@@ -57,6 +57,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 {
                     Id = build.Id,
                     ProjectId = build.Project.Id,
+                    Organization = this.vssClient.OrganizationName,
                     RepositoryId = new Guid(build.Repository.Id),
                     BuildNumber = build.BuildNumber,
                     KeepForever = build.KeepForever,

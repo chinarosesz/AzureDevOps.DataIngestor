@@ -4,14 +4,16 @@ using AzureDevOps.DataIngestor.Sdk.Clients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AzureDevOps.DataIngestor.Sdk.Migrations
 {
     [DbContext(typeof(VssDbContext))]
-    partial class VssDbContextModelSnapshot : ModelSnapshot
+    [Migration("20210826201934_HeyIChangedSomething")]
+    partial class HeyIChangedSomething
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
