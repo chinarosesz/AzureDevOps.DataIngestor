@@ -23,6 +23,12 @@ namespace AzureDevOps.DataIngestor
     {
     }
 
+    [Verb("build", HelpText = "Collect build data given a specific project or all projects by default")]
+    public class BuildCommandOptions : ProjectCommandOptionsBase
+    {
+
+    }
+
     public class CommandOptions
     {
         [Option("organization", Required = true, HelpText = "The name of Azure DevOps account, for example: https://dev.azure.com/lilatran where lilatran is the account name")]

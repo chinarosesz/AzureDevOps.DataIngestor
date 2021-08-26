@@ -74,6 +74,11 @@ namespace AzureDevOps.DataIngestor
                 IEnumerable<string> projects = buildDefinitionCommandOptions.Projects;
                 collector = new BuildDefinitionIngestor(vssClient, sqlConnectionString, projects, logger);
             }
+            else if (parsedOptions is BuildCommandOptions buildCommandOptions)
+            {
+                IEnumerable<string> projects = buildCommandOptions.Projects;
+                collector = new BuildIngestor(vssClient, sqlConnectionString, projects, logger);
+            }
 
             // Finally run selected collector!
             await collector.RunAsync();
@@ -102,15 +107,17 @@ namespace AzureDevOps.DataIngestor
                 ProjectCommandOptions, 
                 RepositoryCommandOptions, 
                 PullRequestCommandOptions, 
-                BuildDefinitionCommandOptions>(args);
+                BuildDefinitionCommandOptions,
+                BuildCommandOptions>(args);
 
             // Map results after parsing
             CommandOptions commandOptions = null;
-            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, BuildDefinitionCommandOptions, object>(
+            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, BuildDefinitionCommandOptions, BuildCommandOptions, object>(
                 (ProjectCommandOptions opts) => commandOptions = opts,
                 (RepositoryCommandOptions opts) => commandOptions = opts,
                 (PullRequestCommandOptions opts) => commandOptions = opts,
                 (BuildDefinitionCommandOptions opts) => commandOptions = opts,
+                (BuildCommandOptions opts) => commandOptions = opts,
                 (errs) => 1);
 
             // Return null if not able to parse
