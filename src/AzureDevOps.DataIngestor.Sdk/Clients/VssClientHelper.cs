@@ -39,14 +39,12 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
             application = PublicClientApplicationBuilder.Create(clientId).WithAuthority(authority).WithDefaultRedirectUri().Build();
             TokenCacheHelper.EnableSerialization(application.UserTokenCache);
 
-            Microsoft.Identity.Client.AuthenticationResult result;
+            AuthenticationResult result;
 
             IEnumerable<IAccount> accounts = await application.GetAccountsAsync();
             try
             {
                 result = await application.AcquireTokenSilent(scopes, accounts.FirstOrDefault()).ExecuteAsync();
-
-                // Create authorization header of the form "Bearer {AccessToken}"
             }
             catch (MsalUiRequiredException ex)
             {
