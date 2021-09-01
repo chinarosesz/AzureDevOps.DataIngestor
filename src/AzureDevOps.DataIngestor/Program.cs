@@ -35,8 +35,8 @@ namespace AzureDevOps.DataIngestor
             VssClient vssClient;
             if (string.IsNullOrEmpty(personalAccessToken))
             {
-                // Connect using current signed in domain user
-                string bearerToken = await VssClientHelper.GetAzureDevOpsBearerTokenForCurrentUserAsync();
+                string bearerToken = await VssClientHelper.SignInUserAndGetTokenUsingMSAL();
+
                 vssClient = new VssClient(parsedOptions.Organization, bearerToken, VssTokenType.Bearer, logger);
             }
             else

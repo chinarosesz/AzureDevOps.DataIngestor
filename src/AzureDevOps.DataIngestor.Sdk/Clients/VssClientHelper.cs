@@ -1,12 +1,29 @@
-﻿using Microsoft.IdentityModel.Clients.ActiveDirectory;
+﻿using AzureDevOps.InteractiveLogin;
+using Microsoft.Identity.Client;
 using Microsoft.VisualStudio.Services.WebApi;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AzureDevOps.DataIngestor.Sdk.Clients
 {
     public class VssClientHelper
     {
+
+        // The Client ID is used by the application to uniquely identify itself to Azure AD
+        // Replace with your own if you already have one
+        private const string clientId = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1";
+
+        // The Authority is the sign-in URL of the tenant
+        private const string authority = "https://login.microsoftonline.com/microsoft.com/v2.0";
+
+        // Constant value to target Azure DevOps. Do not change  
+        private static readonly string[] scopes = new string[] { "499b84ac-1321-427f-aa17-267ca6975798/user_impersonation" };
+
+        // MSAL Public client app
+        private static IPublicClientApplication application;
+
         public static TimeSpan GetRetryAfter(VssResponseContext vssResponseContext)
         {
             TimeSpan retryAfter = vssResponseContext?.Headers.RetryAfter?.Delta.Value ?? TimeSpan.Zero;
@@ -14,26 +31,32 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
         }
 
         /// <summary>
-        /// Cuurrently suports only Microsoft tenant, user has to be connected on domain
+        /// Sign-in user using MSAL and obtain an access token for Azure DevOps
         /// </summary>
-        public static async Task<string> GetAzureDevOpsBearerTokenForCurrentUserAsync()
+        public static async Task<string> SignInUserAndGetTokenUsingMSAL()
         {
-            string tenant = "microsoft.com";
+            // Initialize the MSAL library by building a public client application
+            application = PublicClientApplicationBuilder.Create(clientId).WithAuthority(authority).WithDefaultRedirectUri().Build();
+            TokenCacheHelper.EnableSerialization(application.UserTokenCache);
 
-            string aadAuthority = $"https://login.windows.net/{tenant}";
+            Microsoft.Identity.Client.AuthenticationResult result;
 
-            // Fixed static resource Guid for Azure Devops
-            string aadResource = "499b84ac-1321-427f-aa17-267ca6975798";
+            IEnumerable<IAccount> accounts = await application.GetAccountsAsync();
+            try
+            {
+                result = await application.AcquireTokenSilent(scopes, accounts.FirstOrDefault()).ExecuteAsync();
 
-            // MSA client ID if you don't have an application ID regsitered with Azure
-            string aadClientId = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1";
+                // Create authorization header of the form "Bearer {AccessToken}"
+            }
+            catch (MsalUiRequiredException ex)
+            {
+                // If the token has expired, prompt the user with a login prompt
+                result = await application.AcquireTokenInteractive(scopes)
+                        .WithClaims(ex.Claims)
+                        .ExecuteAsync();
+            }
 
-            // Login now
-            AuthenticationContext authCtx = new AuthenticationContext(aadAuthority);
-            string aadUser = $"{Environment.UserName}@{tenant}";
-            UserCredential userCredential = new UserCredential(aadUser);
-            AuthenticationResult authContext = await authCtx.AcquireTokenAsync(aadResource, aadClientId, userCredential);
-            return authContext.AccessToken;
+            return result.AccessToken;
         }
     }
 }
