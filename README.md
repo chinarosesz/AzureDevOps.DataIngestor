@@ -4,6 +4,7 @@ following ingestors are available and can be specified from the command line.
 * Project
 * Repository
 * PullRequest
+* Commit
 * BuildDefinition
 
 # Downloads
