@@ -4,6 +4,7 @@ following ingestors are available and can be specified from the command line.
 * Project
 * Repository
 * PullRequest
+* Commit
 * BuildDefinition
 
 # Downloads
@@ -24,6 +25,8 @@ Copyright (C) 2020 https://github.com/chinarosesz/AzureDevOps.DataIngestor
   repository         Collect repository data given a specific project or all projects by default
 
   pullrequest        Collect pull request data given a specific project or all projects by default
+  
+  commit             Collect commit data given a specific project or all projects by default
 
   builddefinition    Collect bulid definition data given a specific project or all projects by default
 
@@ -56,6 +59,13 @@ Example with SQL connection string and personal access token being passed in
 To collect projects data from Azure DevOps.
 <pre>AzureDevOps.DataIngestor.exe project --organization MyOrg</pre>
 
+### Build 
+Collect build data from Azure DevOps for all projects, param <code>--projects</code> is not required.
+<pre>AzureDevOps.Ingestor.exe build --organization MyOrg</pre>
+
+Collect build data from Azure DevOps given a list of projects
+<pre>AzureDevOps.Ingestor.exe build --organization MyOrg --projects project1:project2</pre>
+
 ### Build Definition
 Collect build definition data from Azure DevOps for all projects, param <code>--projects</code> is not required.
 <pre>AzureDevOps.Ingestor.exe builddefinition --organization MyOrg</pre>
@@ -68,6 +78,11 @@ Pull requests are collected by going back one month. This ingestor only collects
 Currently there is no support for abandoned pull requests. Once the ingestor is finished running, a watermark is updated to
 the most recent run date, and the next time this ingestor gets called again, it will not collect the same pull requests.
 <pre>AzureDevOps.DataIngestor.exe pullrequest --organization MyOrg --projects MyProject</pre>
+
+### Commits
+Commits are collected by going back one month. Once the ingestor is finished running, a watermark is updated to
+the most recent run date, and the next time this ingestor gets called again, it will not collect the same commits.
+<pre>AzureDevOps.DataIngestor.exe commit --organization MyOrg --projects MyProject</pre>
 
 ### Repository
 Collect all repositories from the whole organization.

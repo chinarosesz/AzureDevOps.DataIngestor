@@ -69,6 +69,11 @@ namespace AzureDevOps.DataIngestor
                 IEnumerable<string> projects = pullRequestCommandOptions.Projects;
                 collector = new PullRequestIngestor(vssClient, sqlConnectionString, projects, logger);
             }
+            else if (parsedOptions is CommitCommandOptions commitCommandOptions)
+            {
+                IEnumerable<string> projects = commitCommandOptions.Projects;
+                collector = new CommitIngestor(vssClient, sqlConnectionString, projects, logger);
+            }
             else if (parsedOptions is BuildDefinitionCommandOptions buildDefinitionCommandOptions)
             {
                 IEnumerable<string> projects = buildDefinitionCommandOptions.Projects;
@@ -106,16 +111,18 @@ namespace AzureDevOps.DataIngestor
             ParserResult<object> parserResult = Parser.Default.ParseArguments<
                 ProjectCommandOptions, 
                 RepositoryCommandOptions, 
-                PullRequestCommandOptions, 
+                PullRequestCommandOptions,
+                CommitCommandOptions,
                 BuildDefinitionCommandOptions,
                 BuildCommandOptions>(args);
 
             // Map results after parsing
             CommandOptions commandOptions = null;
-            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, BuildDefinitionCommandOptions, BuildCommandOptions, object>(
+            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, CommitCommandOptions, BuildDefinitionCommandOptions, BuildCommandOptions, object>(
                 (ProjectCommandOptions opts) => commandOptions = opts,
                 (RepositoryCommandOptions opts) => commandOptions = opts,
                 (PullRequestCommandOptions opts) => commandOptions = opts,
+                (CommitCommandOptions opts) => commandOptions = opts,
                 (BuildDefinitionCommandOptions opts) => commandOptions = opts,
                 (BuildCommandOptions opts) => commandOptions = opts,
                 (errs) => 1);
