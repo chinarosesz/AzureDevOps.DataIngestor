@@ -18,6 +18,11 @@ namespace AzureDevOps.DataIngestor
     {
     }
 
+    [Verb("commit", HelpText = "Collect commit data given a specific project or all projects by default")]
+    public class CommitCommandOptions : ProjectCommandOptionsBase
+    {
+    }
+
     [Verb("builddefinition", HelpText = "Collect bulid definition data given a specific project or all projects by default")]
     public class BuildDefinitionCommandOptions : ProjectCommandOptionsBase
     {

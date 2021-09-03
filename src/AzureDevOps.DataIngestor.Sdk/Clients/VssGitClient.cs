@@ -20,23 +20,38 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
             this.retryAfter = VssClientHelper.GetRetryAfter(this.LastResponseContext);
         }
 
-        public async Task<List<GitCommitRef>> GetCommitsAsync(Guid repositoryId, string branchName, DateTime fromDate, DateTime toDate, int top = 100, int? skip = null)
+        public async Task<List<GitCommitRef>> GetCommitsWithRetryAsync(Guid repositoryId, string branchName, DateTime fromDate, DateTime toDate, int top = 100, int? skip = null)
         {
             GitQueryCommitsCriteria searchCriteria = new GitQueryCommitsCriteria
             {
                 FromDate = fromDate.ToUniversalTime().ToString("o"),
                 ToDate = toDate.ToUniversalTime().ToString("o"),
-                ItemVersion = new GitVersionDescriptor
+            };
+
+            if (!string.IsNullOrEmpty(branchName))
+            {
+                searchCriteria.ItemVersion = new GitVersionDescriptor
                 {
                     Version = branchName,
                     VersionType = GitVersionType.Branch
-                },
-            };
+                };
+            }
 
-            List<GitCommitRef> commitRefs = await RetryHelper.SleepAndRetry(this.retryAfter, this.logger, async () =>
+            List<GitCommitRef> commitRefs = new List<GitCommitRef>();
+            try
             {
-                return await this.GetCommitsAsync(repositoryId, searchCriteria, skip, top);
-            });
+                commitRefs = await RetryHelper.SleepAndRetry(this.retryAfter, this.logger, async () =>
+                {
+                    return await this.GetCommitsAsync(repositoryId, searchCriteria, skip, top);
+                });
+            }
+            catch (VssServiceException ex)
+            {
+                if (ex.Message.StartsWith("TF401019", StringComparison.OrdinalIgnoreCase))
+                {
+                    this.logger.LogWarning("Repository '{repositoryId}' does not exist, is disabled or you do not have permissions for the operation", repositoryId);
+                }
+            }
 
             return commitRefs;
         }
