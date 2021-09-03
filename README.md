@@ -26,7 +26,7 @@ Copyright (C) 2020 https://github.com/chinarosesz/AzureDevOps.DataIngestor
 
   pullrequest        Collect pull request data given a specific project or all projects by default
   
-  commit            Collect commit data given a specific project or all projects by default
+  commit             Collect commit data given a specific project or all projects by default
 
   builddefinition    Collect bulid definition data given a specific project or all projects by default
 
