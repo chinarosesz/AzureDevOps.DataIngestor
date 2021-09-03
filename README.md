@@ -101,3 +101,5 @@ are added upon requests.
 # Contribution
 This is an open source project, feel free to create a PR and I'll review the changes. 
 
+# Code Review
+You can isntall CodeFlow extension for Edge/Chrome here https://chrome.google.com/webstore/detail/codeflow/aphnoipocoffpdafmiidfmaiadhilelm
