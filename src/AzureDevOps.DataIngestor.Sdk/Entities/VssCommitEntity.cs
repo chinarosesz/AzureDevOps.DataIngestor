@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace AzureDevOps.DataIngestor.Sdk.Entities
 {
     [Table("VssCommit")]
-    public partial class VssCommitEntity : VssBaseEntity
+    public class VssCommitEntity : VssBaseEntity
     {
         [Key]
         [Column(Order = 0)]
