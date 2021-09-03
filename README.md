@@ -59,6 +59,13 @@ Example with SQL connection string and personal access token being passed in
 To collect projects data from Azure DevOps.
 <pre>AzureDevOps.DataIngestor.exe project --organization MyOrg</pre>
 
+### Build 
+Collect build data from Azure DevOps for all projects, param <code>--projects</code> is not required.
+<pre>AzureDevOps.Ingestor.exe build --organization MyOrg</pre>
+
+Collect build data from Azure DevOps given a list of projects
+<pre>AzureDevOps.Ingestor.exe build --organization MyOrg --projects project1:project2</pre>
+
 ### Build Definition
 Collect build definition data from Azure DevOps for all projects, param <code>--projects</code> is not required.
 <pre>AzureDevOps.Ingestor.exe builddefinition --organization MyOrg</pre>
