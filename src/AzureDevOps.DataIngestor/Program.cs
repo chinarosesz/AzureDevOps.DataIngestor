@@ -31,7 +31,7 @@ namespace AzureDevOps.DataIngestor
             // Get Sql Server connection string from command line or environment variable
             string sqlServerConnectionString = string.IsNullOrEmpty(parsedOptions.SqlServerConnectionString) ? Environment.GetEnvironmentVariable("VssSqlServerConnectionString") : parsedOptions.SqlServerConnectionString;
 
-            // Create Azure DevOps HttpClient
+            // Create Azure DevOps HttpClient and a standard HttpClient for REST CALLS when needed.
             VssClient vssClient;
             if (string.IsNullOrEmpty(personalAccessToken))
             {
@@ -63,6 +63,11 @@ namespace AzureDevOps.DataIngestor
             {
                 IEnumerable<string> projects = repositoryCommandOptions.Projects;
                 collector = new RepositoryIngestor(vssClient, sqlConnectionString, projects, logger);
+            }
+            else if (parsedOptions is RepositoryACLCommandOptions repositoryACLCommandOptions)
+            {
+                IEnumerable<string> projects = repositoryACLCommandOptions.Projects;
+                collector = new RepositoryACLIngestor(vssClient, sqlConnectionString, projects, logger);
             }
             else if (parsedOptions is PullRequestCommandOptions pullRequestCommandOptions)
             {
@@ -110,7 +115,8 @@ namespace AzureDevOps.DataIngestor
             // Parse command line options
             ParserResult<object> parserResult = Parser.Default.ParseArguments<
                 ProjectCommandOptions, 
-                RepositoryCommandOptions, 
+                RepositoryCommandOptions,
+                RepositoryACLCommandOptions,
                 PullRequestCommandOptions,
                 CommitCommandOptions,
                 BuildDefinitionCommandOptions,
@@ -118,9 +124,10 @@ namespace AzureDevOps.DataIngestor
 
             // Map results after parsing
             CommandOptions commandOptions = null;
-            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, PullRequestCommandOptions, CommitCommandOptions, BuildDefinitionCommandOptions, BuildCommandOptions, object>(
+            parserResult.MapResult<ProjectCommandOptions, RepositoryCommandOptions, RepositoryACLCommandOptions, PullRequestCommandOptions, CommitCommandOptions, BuildDefinitionCommandOptions, BuildCommandOptions, object>(
                 (ProjectCommandOptions opts) => commandOptions = opts,
                 (RepositoryCommandOptions opts) => commandOptions = opts,
+                (RepositoryACLCommandOptions opts) => commandOptions = opts,
                 (PullRequestCommandOptions opts) => commandOptions = opts,
                 (CommitCommandOptions opts) => commandOptions = opts,
                 (BuildDefinitionCommandOptions opts) => commandOptions = opts,

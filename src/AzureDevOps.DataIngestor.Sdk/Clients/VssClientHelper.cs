@@ -42,6 +42,12 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
             AuthenticationResult result;
 
             IEnumerable<IAccount> accounts = await application.GetAccountsAsync();
+            // clear the cache. This code will clear cache every time. not sure we need it.
+            //while (accounts.Any())
+            //{
+            //    await application.RemoveAsync(accounts.First());
+            //    accounts = (await application.GetAccountsAsync()).ToList();
+            //}
             try
             {
                 result = await application.AcquireTokenSilent(scopes, accounts.FirstOrDefault()).ExecuteAsync();

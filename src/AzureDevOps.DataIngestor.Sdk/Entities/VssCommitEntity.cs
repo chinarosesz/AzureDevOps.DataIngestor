@@ -14,6 +14,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
         [Key]
         [Column(Order = 1)]
         public Guid RepositoryId { get; set; }
+        
+        public string RepositoryName { get; set; }
 
         public Guid ProjectId { get; set; }
 

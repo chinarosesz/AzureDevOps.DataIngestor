@@ -1,12 +1,16 @@
 ﻿using AzureDevOps.DataIngestor.Sdk.Clients;
 using AzureDevOps.DataIngestor.Sdk.Entities;
 using AzureDevOps.DataIngestor.Sdk.Util;
+using CsvHelper;
+using CsvHelper.Configuration;
 using EntityFrameworkCore.BulkOperations;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -90,42 +94,67 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 entities.Add(entity);
             }
 
-            this.logger.LogInformation("Ingesting pull request data...");
-            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
-            int ingestedResult = context.BulkInsertOrUpdate(entities);
-            this.logger.LogInformation($"Done ingesting {ingestedResult} records");
+            if (Helper.ExtractToCSV)
+            {
+                var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    // Don't write the header again.
+                    HasHeaderRecord = Helper.ExtractToCSVExportHeader,
+                    SanitizeForInjection = true
+                };
+
+                using (Stream stream = File.Open(@".\csv\PullRequest.csv", Helper.ExtractToCSVExportHeader ? FileMode.Create : FileMode.Append))
+                using (CsvWriter csv = new CsvWriter(new StreamWriter(stream), config))
+                {
+                    csv.WriteRecords(entities);
+                    this.logger.LogInformation($"Done exporting commits to CSV file");
+                    Helper.ExtractToCSVExportHeader = false;
+                }
+            }
+            else
+            {
+                this.logger.LogInformation("Ingesting pull request data...");
+                using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+                int ingestedResult = context.BulkInsertOrUpdate(entities);
+                this.logger.LogInformation($"Done ingesting {ingestedResult} records");
+            }
         }
 
         private void UpdatePullRequestWatermark(PullRequestStatus status, TeamProjectReference project)
         {
-            VssPullRequestWatermarkEntity vssPullRequestWatermarkEntity = new VssPullRequestWatermarkEntity
+            if (!Helper.ExtractToCSV)
             {
-                RowUpdatedDate = Helper.UtcNow,
-                Organization = this.vssClient.OrganizationName,
-                ProjectId = project.Id,
-                ProjectName = project.Name,
-                PullRequestStatus = status.ToString(),
-            };
+                VssPullRequestWatermarkEntity vssPullRequestWatermarkEntity = new VssPullRequestWatermarkEntity
+                {
+                    RowUpdatedDate = Helper.UtcNow,
+                    Organization = this.vssClient.OrganizationName,
+                    ProjectId = project.Id,
+                    ProjectName = project.Name,
+                    PullRequestStatus = status.ToString(),
+                };
 
-            this.logger.LogInformation($"Updating {vssPullRequestWatermarkEntity.PullRequestStatus} pull request watermark...");
-            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
-            int ingestedResult = context.BulkInsertOrUpdate(new List<VssPullRequestWatermarkEntity> { vssPullRequestWatermarkEntity });
-            this.logger.LogInformation($"Latest {vssPullRequestWatermarkEntity.PullRequestStatus} pull request watermark at {vssPullRequestWatermarkEntity.RowUpdatedDate}");
+                this.logger.LogInformation($"Updating {vssPullRequestWatermarkEntity.PullRequestStatus} pull request watermark...");
+                using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+                int ingestedResult = context.BulkInsertOrUpdate(new List<VssPullRequestWatermarkEntity> { vssPullRequestWatermarkEntity });
+                this.logger.LogInformation($"Latest {vssPullRequestWatermarkEntity.PullRequestStatus} pull request watermark at {vssPullRequestWatermarkEntity.RowUpdatedDate}");
+            }
         }
 
         private DateTime GetPullRequestWatermark(TeamProjectReference project, PullRequestStatus status)
         {
             // Default by going back to 1 month if no data has been ingested for this repo
-            DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-1);
+            DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-18);
 
-            // Get latest ingested date for pull request from pull request watermark table
-            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
-            VssPullRequestWatermarkEntity latestWatermark = context.VssPullRequestWatermarkEntities.Where(v => v.ProjectId == project.Id && v.PullRequestStatus == status.ToString()).FirstOrDefault();
-            if (latestWatermark != null)
+            if (!Helper.ExtractToCSV)
             {
-                mostRecentDate = latestWatermark.RowUpdatedDate;
+                // Get latest ingested date for pull request from pull request watermark table
+                using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+                VssPullRequestWatermarkEntity latestWatermark = context.VssPullRequestWatermarkEntities.Where(v => v.ProjectId == project.Id && v.PullRequestStatus == status.ToString()).FirstOrDefault();
+                if (latestWatermark != null)
+                {
+                    mostRecentDate = latestWatermark.RowUpdatedDate;
+                }
             }
-
             return mostRecentDate;
         }
     }

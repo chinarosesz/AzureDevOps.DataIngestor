@@ -13,6 +13,11 @@ namespace AzureDevOps.DataIngestor
     {
     }
 
+    [Verb("repositoryacl", HelpText = "Collect repository permissions data given a specific project or all projects by default")]
+    public class RepositoryACLCommandOptions : ProjectCommandOptionsBase
+    {
+    }
+
     [Verb("pullrequest", HelpText = "Collect pull request data given a specific project or all projects by default")]
     public class PullRequestCommandOptions : ProjectCommandOptionsBase
     {

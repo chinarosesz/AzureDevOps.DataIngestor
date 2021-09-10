@@ -1,5 +1,8 @@
 ﻿using AzureDevOps.DataIngestor.Sdk.Clients;
 using AzureDevOps.DataIngestor.Sdk.Entities;
+using AzureDevOps.DataIngestor.Sdk.Util;
+using CsvHelper;
+using CsvHelper.Configuration;
 using EntityFrameworkCore.BulkOperations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
@@ -7,6 +10,8 @@ using Microsoft.TeamFoundation.Core.WebApi;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
+using System.Globalization;
 
 namespace AzureDevOps.DataIngestor.Sdk.Ingestors
 {
@@ -53,12 +58,34 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             }
 
             this.logger.LogInformation("Start ingesting projects data...");
-            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
-            using IDbContextTransaction transaction = context.Database.BeginTransaction();
-            context.BulkDelete(context.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName));
-            int insertedResult = context.BulkInsert(entities);
-            transaction.Commit();
-            this.logger.LogInformation($"Done ingesting {insertedResult} records");
+
+
+            if (Helper.ExtractToCSV)
+            {
+                var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    // Don't write the header again.
+                    HasHeaderRecord = Helper.ExtractToCSVExportHeader,
+                    SanitizeForInjection = true
+                };
+
+                using (Stream stream = File.Open(@".\csv\Project.csv", Helper.ExtractToCSVExportHeader ? FileMode.Create : FileMode.Append))
+                using (CsvWriter csv = new CsvWriter(new StreamWriter(stream), config))
+                {
+                    csv.WriteRecords(entities);
+                    this.logger.LogInformation($"Done exporting projects to CSV file");
+                    Helper.ExtractToCSVExportHeader = false;
+                }
+            }
+            else
+            {
+                using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+                using IDbContextTransaction transaction = context.Database.BeginTransaction();
+                context.BulkDelete(context.VssProjectEntities.Where(v => v.Organization == this.vssClient.OrganizationName));
+                int insertedResult = context.BulkInsert(entities);
+                transaction.Commit();
+                this.logger.LogInformation($"Done ingesting {insertedResult} records");
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
         public DbSet<VssBuildWatermarkEntity> VssBuildWatermarkEntities { get; set; }
         public DbSet<VssCommitEntity> VssCommitEntities { get; set; }
         public DbSet<VssCommitWatermarkEntity> VssCommitWatermarkEntities { get; set; }
+        public DbSet<VssRepositoryACLEntity> VssRepositoryACLEntities { get; set; }
         public VssDbContext() : base() { }
         
         public VssDbContext(ILogger logger, string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Integrated Security=True;Initial Catalog=VssAzureDevOps") : base()
@@ -58,6 +59,9 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
 
             modelBuilder.Entity<VssRepositoryEntity>()
                 .HasIndex(p => p.Organization);
+
+            modelBuilder.Entity<VssRepositoryACLEntity>()
+                 .HasIndex(p => p.Organization);
 
             modelBuilder.Entity<VssPullRequestEntity>()
                 .HasKey(p => new { p.PullRequestId, p.RepositoryId });

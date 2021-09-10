@@ -76,7 +76,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
             List<GitRepository> repos = await RetryHelper.SleepAndRetry(this.retryAfter, this.logger, async () =>
             {
                 this.logger.LogInformation($"Retrieving repostiories for project {project}");
-                List<GitRepository> repos = await this.GetRepositoriesAsync(project);
+                List<GitRepository> repos = await this.GetRepositoriesAsync(project, includeHidden: true);
                 this.logger.LogInformation($"Retrieved {repos.Count} repositories for project {project}");
                 return repos;
             });

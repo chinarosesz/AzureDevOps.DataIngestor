@@ -1,12 +1,16 @@
 ﻿using AzureDevOps.DataIngestor.Sdk.Clients;
 using AzureDevOps.DataIngestor.Sdk.Entities;
 using AzureDevOps.DataIngestor.Sdk.Util;
+using CsvHelper;
+using CsvHelper.Configuration;
 using EntityFrameworkCore.BulkOperations;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -78,6 +82,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                     ProjectId = repo.ProjectReference.Id,
                     CommitId = commit.CommitId,
                     RepositoryId= repo.Id,
+                    RepositoryName = repo.Name,
                     AuthorEmail = commit.Author.Email,
                     CommitTime = commit.Author.Date,
                     Comment = commit.Comment,
@@ -87,43 +92,68 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 entities.Add(entity);
             }
 
-            this.logger.LogInformation("Ingesting commit request data...");
-            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
-            int ingestedResult = context.BulkInsertOrUpdate(entities);
-            this.logger.LogInformation($"Done ingesting {ingestedResult} records for Repo Id {repo.Id}");
+            if (Helper.ExtractToCSV)
+            {
+                var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    // Don't write the header again.
+                    HasHeaderRecord = Helper.ExtractToCSVExportHeader,
+                    SanitizeForInjection = true
+                };
+
+                using (Stream stream = File.Open(@".\csv\Commit.csv", Helper.ExtractToCSVExportHeader ? FileMode.Create : FileMode.Append))
+                using (CsvWriter csv = new CsvWriter(new StreamWriter(stream), config))
+                {
+                    csv.WriteRecords(entities);
+                    this.logger.LogInformation($"Done exporting commits to CSV file");
+                    Helper.ExtractToCSVExportHeader = false;
+                }
+            }
+            else
+            {
+                this.logger.LogInformation("Ingesting commit request data...");
+                using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+                int ingestedResult = context.BulkInsertOrUpdate(entities);
+                this.logger.LogInformation($"Done ingesting {ingestedResult} records for Repo Id {repo.Id}");
+            }
         }
 
         private void UpdateCommitWatermark(TeamProjectReference project, Guid repoId)
         {
-            VssCommitWatermarkEntity vssCommitWatermarkEntity = new VssCommitWatermarkEntity
+            if (!Helper.ExtractToCSV)
             {
-                RowUpdatedDate = Helper.UtcNow,
-                Organization = this.vssClient.OrganizationName,
-                RepositoryId = repoId,
-                ProjectId = project.Id,
-                ProjectName = project.Name,
-            };
+                VssCommitWatermarkEntity vssCommitWatermarkEntity = new VssCommitWatermarkEntity
+                {
+                    RowUpdatedDate = Helper.UtcNow,
+                    Organization = this.vssClient.OrganizationName,
+                    RepositoryId = repoId,
+                    ProjectId = project.Id,
+                    ProjectName = project.Name,
+                };
 
-            this.logger.LogInformation($"Updating commit watermark...");
-            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+                this.logger.LogInformation($"Updating commit watermark...");
+                using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
 
-            int ingestedResult = context.BulkInsertOrUpdate(new List<VssCommitWatermarkEntity> { vssCommitWatermarkEntity });
-            this.logger.LogInformation($"Latest commit watermark at {vssCommitWatermarkEntity.RowUpdatedDate}");
+                int ingestedResult = context.BulkInsertOrUpdate(new List<VssCommitWatermarkEntity> { vssCommitWatermarkEntity });
+                this.logger.LogInformation($"Latest commit watermark at {vssCommitWatermarkEntity.RowUpdatedDate}");
+            }
         }
 
         private DateTime GetCommitWatermark(Guid repoId)
         {
             // Default by going back to 1 month if no data has been ingested for this repo
-            DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-1);
+            DateTime mostRecentDate = DateTime.UtcNow.AddMonths(-18);
 
-            // Get latest ingested date for repo from commit watermark table
-            using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
-            VssCommitWatermarkEntity latestWatermark = context.VssCommitWatermarkEntities.Where(v => v.RepositoryId == repoId).FirstOrDefault();
-            if (latestWatermark != null)
+            if (!Helper.ExtractToCSV)
             {
-                mostRecentDate = latestWatermark.RowUpdatedDate;
+                // Get latest ingested date for repo from commit watermark table
+                using VssDbContext context = new VssDbContext(logger, this.sqlConnectionString);
+                VssCommitWatermarkEntity latestWatermark = context.VssCommitWatermarkEntities.Where(v => v.RepositoryId == repoId).FirstOrDefault();
+                if (latestWatermark != null)
+                {
+                    mostRecentDate = latestWatermark.RowUpdatedDate;
+                }
             }
-
             return mostRecentDate;
         }
     }

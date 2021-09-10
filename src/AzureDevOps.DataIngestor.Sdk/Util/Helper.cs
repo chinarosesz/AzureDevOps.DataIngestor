@@ -12,6 +12,15 @@ namespace AzureDevOps.DataIngestor.Sdk.Util
     {
         public static DateTime UtcNow { get; } = DateTime.UtcNow;
 
+        // TODO: Need to find another way to integrate CVS Export so adding as static here for now.
+        public static bool ExtractToCSV { get; set; } = true;
+
+        // TODO: Need to find another way to integrate CVS Export so adding as static here for now.
+         public static bool ExtractToCSVExportHeader { get; set; } = true;
+
+        // TODO: Need bettwer way to share token between VssClient and HttpClient so adding here for now.
+        public static string AuthenticationHeader { get; set; } = string.Empty;
+
         public static byte[] Compress(Object obj)
         {
             string jsonString = Helper.SerializeObject(obj);

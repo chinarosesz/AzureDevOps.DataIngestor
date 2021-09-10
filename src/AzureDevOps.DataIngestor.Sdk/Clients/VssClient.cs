@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using AzureDevOps.DataIngestor.Sdk.Util;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -10,6 +11,10 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
     {
         private VssGitClient gitClient;
         private VssBuildClient buildClient;
+        private VssSecurityClient securityClient;
+        private VssGraphClient graphClient;
+        private VssIdentityClient identityClient;
+        private VssHttpClient httpClient;
         private readonly ILogger logger;
 
         public string OrganizationName { get; private set; }
@@ -49,10 +54,45 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
             }
         }
 
+        public VssSecurityClient SecurityClient
+        {
+            get
+            {
+                if (this.securityClient == null)
+                {
+                    this.securityClient = new VssSecurityClient(this.VssConnection.Uri, this.VssConnection.Credentials, this.VssConnection.Settings, this.logger);
+                }
+                return this.securityClient;
+            }
+        }
+
+        public VssIdentityClient IdentityClient
+        {
+            get
+            {
+                if (this.identityClient == null)
+                {
+                    this.identityClient = new VssIdentityClient(this.VssConnection.Uri, this.VssConnection.Credentials, this.VssConnection.Settings, this.logger);
+                }
+                return this.identityClient;
+            }
+        }
+        public VssGraphClient GraphClient
+        {
+            get
+            {
+                if (this.graphClient == null)
+                {
+                    this.graphClient = new VssGraphClient(this.VssConnection.Uri, this.VssConnection.Credentials, this.VssConnection.Settings, this.logger);
+                }
+                return this.graphClient;
+            }
+        }
         public VssClient(string organization, string token, VssTokenType tokenType, ILogger logger)
         {
             this.OrganizationName = organization;
             this.logger = logger;
+            Helper.AuthenticationHeader = token;
 
             if (tokenType == VssTokenType.Basic)
             {
@@ -61,6 +101,18 @@ namespace AzureDevOps.DataIngestor.Sdk.Clients
             else if (tokenType == VssTokenType.Bearer)
             {
                 this.ConnectWithBearerToken(token);
+            }
+        }
+
+        public VssHttpClient VSSHttpClient
+        {
+            get
+            {
+                if (this.httpClient == null)
+                {
+                    this.httpClient = new VssHttpClient(this.VssConnection.Uri, Helper.AuthenticationHeader, this.logger);
+                }
+                return this.httpClient;
             }
         }
 
