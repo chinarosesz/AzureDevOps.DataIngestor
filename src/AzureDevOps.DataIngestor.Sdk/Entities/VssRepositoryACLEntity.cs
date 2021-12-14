@@ -26,6 +26,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
 
         public string Descriptor { get; set; }
 
+        public string SubjectDescriptor { get; set; }
+
         public string PermissionsAllow { get; set; }
         
         public string PermissionsDeny { get; set; }

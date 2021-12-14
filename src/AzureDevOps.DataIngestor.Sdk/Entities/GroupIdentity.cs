@@ -3,6 +3,15 @@ using System.Text.Json.Serialization;
 
 namespace AzureDevOps.DataIngestor.Sdk.Entities
 {
+
+    /// <summary>
+    /// Class that stores the group identity information.  This is taken from the undocumented Identity APIs.
+    /// </summary>
+    public class IdentityInformation
+    {
+
+    }
+
     /// <summary>
     /// Class that stores the group identity information.  This is taken from the undocumented Identity APIs.
     /// </summary>
@@ -15,6 +24,33 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
         [JsonPropertyName("value")]
         public List<GroupInformation> GroupInformation { get; set; }
     }
+
+    /// <summary>
+    /// Class that stores the GraphStorageKeyResult information.  This is taken from the undocumented Identity APIs.
+    /// </summary>
+    public class GraphStorageKeyResult
+    {
+        //// Number of groups.
+        //public string Value { get; set; }
+
+        // List that stores the group information.
+        [JsonPropertyName("value")]
+        public string StorageKey { get; set; }
+    }
+
+    /// <summary>
+    /// Class that stores the GraphGroup information.  This is taken from the undocumented Identity APIs.
+    /// </summary>
+    public class GraphGroup
+    {
+        //// Number of groups.
+        //public string Value { get; set; }
+
+        // Description of the group.
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+    }
+
 
     /// <summary>
     /// Contains information on the type of container (group or team).

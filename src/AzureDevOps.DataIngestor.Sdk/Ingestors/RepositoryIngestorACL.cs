@@ -8,11 +8,13 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
+//using Microsoft.VisualStudio.Services.Graph.Client;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.Identity;
 using Microsoft.VisualStudio.Services.Security;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -72,6 +74,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             // Get repos for all projects
             List<GitRepository> repositories = new List<GitRepository>();
 
+            List<IdentityDescriptorMap> descriptorMapList = new List<IdentityDescriptorMap>();
+
             foreach (TeamProjectReference project in projects)
             {
                 this.DisplayProjectHeader(this.logger, project.Name);
@@ -79,6 +83,12 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
 
                 foreach (GitRepository repo in reposFromProject)
                 {
+                    // TODO:REMOVE
+                    if (repo.Id.ToString() == "REPO-ID")
+                    {
+                        Console.WriteLine("debug");
+                    }
+
                     if (false)
                     {
                         // EXAMPLE CHECK CLAUDIOM Permissions on EAch Repo
@@ -112,6 +122,12 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
 
                         foreach (GitRef branch in repRefs)
                         {
+                            // TODO: Remove this as it limits to default repo only
+                            if (String.Compare(repo.DefaultBranch, branch.Name) != 0)
+                            {
+                                continue;
+                            }
+
                             this.logger.LogInformation($"Retrieving exporting Permissions for repository [{repo.Name}], Branch [{branch.Name}] ...");
 
                             string token = this.CreateBranchToken(repo.ProjectReference.Id.ToString(), repo.Id.ToString(), branch.Name);
@@ -129,20 +145,9 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                                     string permsAllow = this.GetPermisions(dict.Value.ExtendedInfo.EffectiveAllow);
                                     string permsDenied = this.GetPermisions(dict.Value.ExtendedInfo.EffectiveDeny);
 
-                                    //try: TODO
-                                    //{
-                                    //    //GraphStorageKeyResult result1 = await this.vssClient.IdentityClient.GetDescriptorByIdAsync()
-                                    //    // GraphStorageKeyResult result2 = await this.vssClient.GraphClient.GetStorageKeyAsync(dict.Key.ToString());
-                                    //    await GetResultFromRandomAPI();
-                                    //}
-                                    //catch (Exception ex)
-                                    //{
-                                    //    Console.WriteLine(ex.Message);
-                                    //}
-
                                     VssRepositoryACLEntity vssRepositoryACLEntity = new VssRepositoryACLEntity()
                                     {
-                                        Organization = "piemini",
+                                        Organization = this.vssClient.OrganizationName,
                                         ProjectId = project.Id,
                                         ProjectName = project.Name,
                                         RepoId = repo.Id,
@@ -155,14 +160,19 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                                     };
 
                                     // TODO: Need to cache these so we don't have to retrieve the descriptors that we have seen before
-                                    vssRepositoryACLEntity.DescriptorName = this.GetDescriptorName(dict.Key.ToString());
-                                    vssRepositoryACLEntity.DescriptorType = this.GetDescriptorType(dict.Key.ToString());
+                                    IdentityDescriptorMap identityMap = this.GetIdentityDetails(dict.Key.ToString());
+                                    vssRepositoryACLEntity.DescriptorName = identityMap.DisplayName;
+                                    vssRepositoryACLEntity.DescriptorType = identityMap.SchemaClassName;
+                                    vssRepositoryACLEntity.SubjectDescriptor = identityMap.SubjectDescriptor;
+
+                                    descriptorMapList.Add(identityMap);
 
                                     vssRepositoryACLEntityList.Add(vssRepositoryACLEntity);
                                 }
                             }
                         }
 
+                        // Export/Ingest RepositoryACL list
                         if (Helper.ExtractToCSV)
                         {
                             var config = new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -181,45 +191,92 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                             }
                         }
                     }
-                    catch (VssException ex)
+                    catch (VssException ex) 
                     {
+                        Console.WriteLine($"Failed to get info for https://piemini.visualstudio.com/{project.Name}/_git/{repo.Name}");
                         Console.WriteLine(ex.Message);
                     }
                 }
 
                 repositories.AddRange(reposFromProject);
             }
+
+            this.logger.LogInformation($"Getting repository user and group memberships");
+            List<IdentityMember> groupMembership = GetGroupMembership(descriptorMapList);
+
+            if (Helper.ExtractToCSV)
+            {
+                var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    // Don't write the header again.
+                    HasHeaderRecord = true,
+                    SanitizeForInjection = true
+                };
+
+                using (Stream stream = File.Open(@".\csv\IdentityList.csv", FileMode.Create))
+                using (CsvWriter csv = new CsvWriter(new StreamWriter(stream), config))
+                {
+                    csv.WriteRecords(groupMembership);
+                    this.logger.LogInformation($"Done exporting identities to CSV file");
+                    Helper.ExtractToCSVExportHeader = false;
+                }
+            }
+
         }
 
-        private string GetDescriptorName(string securityDescriptor)
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="securityDescriptor"></param>
+        /// <returns></returns>
+        private IdentityDescriptorMap GetIdentityDetails(string securityDescriptor)
         {
-            string descriptorName;
+            IdentityDescriptorMap descriptor = new IdentityDescriptorMap();
+            descriptor.Descriptor = securityDescriptor;
 
             try
             {
                 if (securityDescriptor.StartsWith("System:ServicePrincipal"))
                 {
-                    descriptorName = "ServicePrincipal";
+                    TeamFoundationIdentities identity =
+                        vssClient.VSSHttpClient.HttpGetAsync<TeamFoundationIdentities>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?descriptors={securityDescriptor}&api-version=5.0")
+                        .GetAwaiter().GetResult();
+                    descriptor.DisplayName = identity.Count > 0 ? identity.Value[0].ProviderDisplayName : securityDescriptor;
+                    descriptor.SubjectDescriptor = identity.Count > 0 ? identity.Value[0].SubjectDescriptor : string.Empty;
+                    descriptor.SchemaClassName = identity.Count > 0 ? identity.Value[0].Properties.SchemaClassName.Value : string.Empty;
+                    descriptor.IsContainer = false;
                 }
                 else if (securityDescriptor.Contains("@") && !securityDescriptor.StartsWith("System:ServicePrincipal"))
                 {
-                    string[] splitDescriptor = securityDescriptor.Split("\\");
-                    descriptorName = splitDescriptor[1];
+                    TeamFoundationIdentities identity =
+                        vssClient.VSSHttpClient.HttpGetAsync<TeamFoundationIdentities>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?descriptors={securityDescriptor}&api-version=5.0")
+                        .GetAwaiter().GetResult();
+                    descriptor.DisplayName = identity.Count > 0 ? identity.Value[0].ProviderDisplayName : securityDescriptor;
+                    descriptor.SubjectDescriptor = identity.Count > 0 ? identity.Value[0].SubjectDescriptor : string.Empty;
+                    descriptor.SchemaClassName = identity.Count > 0 ? identity.Value[0].Properties.SchemaClassName.Value : string.Empty;
+                    descriptor.IsContainer = false;
                 }
                 else if (securityDescriptor.StartsWith("Microsoft.TeamFoundation.ServiceIdentity"))
                 {
-                    descriptorName = securityDescriptor;
-                    ServiceIdentity svc =
-                        vssClient.VSSHttpClient.HttpGetAsync<ServiceIdentity>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?descriptors={securityDescriptor}&api-version=5.0")
+                    TeamFoundationIdentities identity =
+                        vssClient.VSSHttpClient.HttpGetAsync<TeamFoundationIdentities>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?descriptors={securityDescriptor}&api-version=5.0")
                         .GetAwaiter().GetResult();
-                    descriptorName = svc.Count > 0 ? svc.ServiceInformation[0].CustomDisplayName : securityDescriptor;
+                    descriptor.DisplayName = identity.Count > 0 ? identity.Value[0].CustomDisplayName : securityDescriptor;
+                    descriptor.SubjectDescriptor = identity.Count > 0 ? identity.Value[0].SubjectDescriptor : string.Empty;
+                    descriptor.SchemaClassName = identity.Count > 0 ? "ServiceAccount" : string.Empty;
+                    descriptor.IsContainer = false;
                 }
                 else if (securityDescriptor.StartsWith("Microsoft.TeamFoundation.Identity"))
                 {
-                    GroupIdentity group =
-                        vssClient.VSSHttpClient.HttpGetAsync<GroupIdentity>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?descriptors={securityDescriptor}&api-version=6.0")
+                    descriptor.SchemaClassName = "Group";
+                    TeamFoundationIdentities group =
+                        vssClient.VSSHttpClient.HttpGetAsync<TeamFoundationIdentities>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?descriptors={securityDescriptor}&api-version=6.0")
                         .GetAwaiter().GetResult();
-                    descriptorName = group.Count > 0 ? group.GroupInformation[0].ProviderDisplayName : securityDescriptor;
+                    Debug.Assert(group.Count <= 1, "Group lookup should return at most 1 member");
+                    descriptor.DisplayName = group.Count > 0 ? group.Value[0].ProviderDisplayName : securityDescriptor;
+                    descriptor.SubjectDescriptor = group.Count > 0 ? group.Value[0].SubjectDescriptor : string.Empty;
+                    descriptor.SchemaClassName = group.Count > 0 ? group.Value[0].Properties.SchemaClassName.Value : string.Empty;
+                    descriptor.IsContainer = (bool)group.Value[0].IsContainer;
                 }
                 else
                 {
@@ -229,52 +286,206 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
             catch (Exception ex)
             {
                 this.logger.LogWarning($"Failed to retrieve identity informaton for descritor [{securityDescriptor}]");
-                descriptorName = securityDescriptor;
             }
-            return descriptorName;
+            return descriptor;
         }
 
-        private string GetDescriptorType(string securityDescriptor)
-        {
-            string branchMember;
-            if (securityDescriptor.StartsWith("System:ServicePrincipal"))
-            {
-                branchMember = "ServicePrincipal";
-            }
-            else if (securityDescriptor.Contains("@") && !securityDescriptor.StartsWith("System:ServicePrincipal"))
-            {
-                string[] splitDescriptor = securityDescriptor.Split("\\");
-                //branchMember.Name = splitDescriptor[1];
-                branchMember = "User";
-            }
-            else if (securityDescriptor.StartsWith("Microsoft.TeamFoundation.ServiceIdentity"))
-            {
-                branchMember = "ServiceAccount";
-                //ServiceIdentity svc =
-                //vssClient.VSSHttpClient.HttpGetAsync<ServiceIdentity>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?descriptors={securityDescriptor}&api-version=5.0")
-                //    .GetAwaiter().GetResult();
 
-            }
-            else if (securityDescriptor.StartsWith("Microsoft.TeamFoundation.Identity"))
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="descriptorMapList"></param>
+        /// <returns></returns>
+        List<IdentityMember> GetGroupMembership(List<IdentityDescriptorMap> descriptorMapList)
+        {
+            // Elininate duplicated values
+            List<IdentityDescriptorMap> uniqueIdentities = descriptorMapList
+                .Select(m => new { m.Descriptor, m.DisplayName, m.SchemaClassName, m.SubjectDescriptor, m.IsContainer })
+                .Distinct()
+                .Select(m => new IdentityDescriptorMap
+                {
+                    Descriptor = m.Descriptor,
+                    DisplayName = m.DisplayName,
+                    SchemaClassName = m.SchemaClassName,
+                    SubjectDescriptor = m.SubjectDescriptor,
+                    IsContainer = m.IsContainer
+                })
+                .ToList();
+
+            Dictionary<string, List<IdentityMember>> identityMembershipList = new Dictionary<string, List<IdentityMember>>();
+
+            // Loops thru list of Groups/Users that have been given permissions to repos. 
+            // If Group, it will iterate thru them and so forth until there are no more groups to itereate.
+            foreach (IdentityDescriptorMap s in uniqueIdentities)
             {
-                //GroupIdentity groupIdentity = branchService.GetGroupIdentity(securityDescriptor.Descriptor);
-                //if (groupIdentity.Count > 1)
+                string rootSubscriptor = s.SubjectDescriptor;
+
+                if (!identityMembershipList.ContainsKey(rootSubscriptor + s.SubjectDescriptor))
+                {
+                    if (s.SubjectDescriptor == "bnd.dXBuOjcyZjk4OGJmLTg2ZjEtNDFhZi05MWFiLTJkN2NkMDExZGI0N1wxYnBpcGVjb3JlLWRldkBtaWNyb3NvZnQuY29t")
+                    {
+                        Console.WriteLine("Stop");
+                    }
+
+                    if (s.IsContainer == true)
+                    {
+                        this.logger.LogInformation($"Getting membership for group {s.DisplayName}...");
+                        GetUsersRecursively(rootDescriptor: s.SubjectDescriptor, depth: 1, subjectDescriptor: s.SubjectDescriptor, ref identityMembershipList);
+                    }
+                    else
+                    {
+                        // Add User/Service Account to dictionary so we don't have to add then again
+                        if (!identityMembershipList.ContainsKey(rootSubscriptor + s.SubjectDescriptor))
+                        {
+                            List<IdentityMember> m = new List<IdentityMember>() {new IdentityMember
+                                {
+                                    RootDescriptor = rootSubscriptor, // TODO: REMOVE COMMENT OR FIX s.SubjectDescriptor,
+                                    Descriptor = s.SubjectDescriptor,
+                                    Depth = 1,
+                                    DescriptorDisplayName = s.DisplayName,
+                                    SchemaClassName = s.SchemaClassName,
+                                    MemberDescriptor = s.SubjectDescriptor,
+                                    MemberDisplayName = s.DisplayName,
+                                    IsMemberDescriptorContainer = false,
+                                }};
+
+                            identityMembershipList.Add(rootSubscriptor + s.SubjectDescriptor, m);
+                        }
+                    }
+                }
+            }
+
+            // FLatten list of Users and Groups
+            List<IdentityMember> flatMembershipList = identityMembershipList.SelectMany(m => m.Value).ToList();
+
+            return flatMembershipList;
+        }
+
+        void GetUsersRecursively(string rootDescriptor, int depth, string  subjectDescriptor, ref Dictionary<string, List<IdentityMember>> identityMembershipList)
+        {
+            if (!string.IsNullOrEmpty(subjectDescriptor) && !identityMembershipList.ContainsKey(rootDescriptor + subjectDescriptor))
+            {
+                //if (subjectDescriptor == "svc.MGJkNThiMDItZDUyZi00ZDMzLWE1ZmQtNGRkMDViMTkyNzY1OkJ1aWxkOjEyNmM4MmYwLThkNTgtNGZlOC05ZTc4LTI2MDdiYzMxNDM2OA")
                 //{
-                //    // TODO:  We are never expecting this, set a breakpoint in this case.
-                //    Console.WriteLine("Not expecting anything else, breakpoint");
-                //    Console.ReadLine();
+                //    Console.WriteLine("debug");
                 //}
 
-                //CustomGroupSuccessors customGroup = this.GroupIdentityToJson(groupIdentity, branchMember.Allow, branchMember.Deny);
-                //branchMember.CustomSuccessor = customGroup;
-                branchMember = "Group";
-                //branchMember.Name = groupIdentity.GroupInformation[0].ProviderDisplayName;
+                List<IdentityMember> members = GetMembers(rootDescriptor, depth, subjectDescriptor, ref identityMembershipList);
+                foreach (IdentityMember member in members)
+                {
+                    // TODO:REMOVE
+                    if (member.MemberDescriptor == "bnd.XXX")
+                    {
+                        Console.WriteLine("debug");
+                    }
+
+                    // Check if we have seen this member before, otherwise proceed to get further groups or add member
+                    if (!string.IsNullOrEmpty(member.MemberDescriptor) && !identityMembershipList.ContainsKey(rootDescriptor + member.MemberDescriptor))
+                    {
+                        if (member.IsMemberDescriptorContainer == true)
+                        {
+                            GetUsersRecursively(rootDescriptor, depth + 1, member.MemberDescriptor, ref identityMembershipList);
+                        }
+                        else
+                        {
+                            identityMembershipList.Add(rootDescriptor + member.MemberDescriptor,
+                                new List<IdentityMember>
+                                { new IdentityMember {
+                                RootDescriptor = rootDescriptor,
+                                Descriptor = member.MemberDescriptor,
+                                DescriptorDisplayName = member.MemberDisplayName,
+                                SchemaClassName = member.MemberDescriptor.StartsWith("svc.", StringComparison.OrdinalIgnoreCase) ? "ServiceAccount" : "User",
+                                MemberDescriptor = member.MemberDescriptor,
+                                MemberDisplayName = member.MemberDisplayName,
+                                IsMemberDescriptorContainer = false,
+                            }});
+                        }
+                    }
+                }
             }
-            else
+        }
+
+        List<IdentityMember> GetMembers (string rootDescriptor, int depth, string subjectDescriptor, ref Dictionary<string, List<IdentityMember>> identityMembershipList)
+        {
+            // Get Group Information
+            TeamFoundationIdentities group =
+                vssClient.VSSHttpClient.HttpGetAsync<TeamFoundationIdentities>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?subjectDescriptors={subjectDescriptor}&api-version=6.0")
+                .GetAwaiter().GetResult();
+
+            // Get Members
+            IdentityGroupMembership groupMembers =
+                vssClient.VSSHttpClient.HttpGetAsync<IdentityGroupMembership>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/graph/memberships/{subjectDescriptor}?direction=down&api-version=6.0-preview.1")
+                .GetAwaiter().GetResult();
+
+            List<IdentityMember> list = new List<IdentityMember>();
+            string subjectDescriptorsToQuery = String.Empty; // TODO: remove this once it's moved into the do/while
+
+            // If group has no members, add itself to the list with no members and to the dictioanry if not already and ad
+            if (groupMembers.Count == 0 && !identityMembershipList.ContainsKey(rootDescriptor + subjectDescriptor))
             {
-                throw new InvalidDataException($"Descriptor type not expected [{securityDescriptor}");
+                list.Add(new IdentityMember()
+                {
+                    RootDescriptor = rootDescriptor,
+                    Descriptor = subjectDescriptor,
+                    Depth = depth,
+                    DescriptorDisplayName = group.Value[0].ProviderDisplayName,
+                    SchemaClassName = group.Value[0].Properties.SchemaClassName.Value,
+                    MemberDescriptor = string.Empty,
+                    MemberDisplayName = string.Empty,
+                    //IsMemberDescriptorContainer = false,
+                });
             }
-            return branchMember;
+
+            // Due to URL limit size of 2048 chars, we have to batch calls into chuncks of no more than 15 descriptors at a time.
+            // On average, User descriptors at 145 chars long up to 186 for groups. Most of large memberships have users or service accounts
+            for (int i = 0; i < groupMembers.Value.Count; i = i + 15)
+            {
+                subjectDescriptorsToQuery = string.Join(",", groupMembers.Value.Skip(i).Take(15).Select(i => i.MemberDescriptor.ToString()).ToArray());
+
+                // Get All Identities of the members returned above.
+                // string subjectDescriptorsToQuery = string.Join(",", groupMembers.Value.Take(25).Select(i => i.MemberDescriptor.ToString()).ToArray());
+                if (!string.IsNullOrEmpty(subjectDescriptorsToQuery))
+                {
+                    TeamFoundationIdentities identities =
+                        vssClient.VSSHttpClient.HttpGetAsync<TeamFoundationIdentities>($"https://vssps.dev.azure.com/{this.vssClient.OrganizationName}/_apis/identities?subjectDescriptors={subjectDescriptorsToQuery}&queryMembership=Direct&api-version=6.0")
+                        .GetAwaiter().GetResult();
+
+                    if (!identityMembershipList.ContainsKey(rootDescriptor + subjectDescriptor))
+                    {
+                        foreach (TeamFoundationIdentity id in identities.Value)
+                        {
+                            if (id.IsActive == false)
+                            {
+                                Console.WriteLine("stop");
+                            }
+
+                            // TODO:REMOVE
+                            if (id.SubjectDescriptor == "GROUP/USER ID")
+                            {
+                                Console.WriteLine("debug");
+                            }
+
+                            list.Add(new IdentityMember()
+                            {
+                                RootDescriptor = rootDescriptor,
+                                Descriptor = subjectDescriptor,
+                                Depth = depth,
+                                DescriptorDisplayName = group.Value[0].ProviderDisplayName,
+                                SchemaClassName = group.Value[0].Properties.SchemaClassName.Value,
+                                MemberDescriptor = id.SubjectDescriptor,
+                                MemberDisplayName = id.Descriptor.EndsWith(id.ProviderDisplayName) && !string.IsNullOrEmpty(id.CustomDisplayName)
+                                    ? id.CustomDisplayName : id.ProviderDisplayName,
+                                IsMemberDescriptorContainer = id.IsContainer ?? false,
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Add group itself to the dictionary so we don't attempt to get the data again
+            identityMembershipList.Add(rootDescriptor + subjectDescriptor, list);
+
+            return list;
         }
 
         private string GetPermisions(int mask)
@@ -330,11 +541,7 @@ namespace AzureDevOps.DataIngestor.Sdk.Ingestors
                 this.logger.LogInformation($"Done ingesting {insertResult} records");
             }
         }
-        public async Task GetResultFromRandomAPI(string apiUrl = "projects")
-        {
-             await vssClient.VSSHttpClient.HttpGetAsync<Rootobject<TeamProjectReference>>($"https://dev.azure.com/{this.vssClient.OrganizationName}/_apis/{apiUrl}");
-        }
-
+        
         /// <summary>
         /// Takes a branch name and converts to token.  Tokenis in UTF-16 little endian format as described here:
         /// https://devblogs.microsoft.com/devops/git-repo-tokens-for-the-security-service/

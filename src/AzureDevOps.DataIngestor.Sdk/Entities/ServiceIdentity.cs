@@ -66,7 +66,8 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
     public class ServiceProperties
     {
         // What type of ADO group this is (User).
-        public string SchemaClassName { get; set; }
+        [JsonPropertyName("SchemaClassName")] 
+        public SchemaClassNameProperty SchemaClassName { get; set; }
 
         // Description of the group.
         public string Description { get; set; }
@@ -89,6 +90,18 @@ namespace AzureDevOps.DataIngestor.Sdk.Entities
 
         // Whether or not it's been vaidated and the time
         public ComplianceValidated ComplianceValidated { get; set; }
+    }
+
+    /// <summary>
+    /// Contains information on the type of container (group or team).
+    /// </summary>
+    public class SchemaClassNameProperty
+    {
+        [JsonPropertyName("$type")]
+        public string Type { get; set; }
+
+        [JsonPropertyName("$value")] 
+        public string Value { get; set; }
     }
 
     /// <summary>
